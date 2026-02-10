@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分类表 - 言葉AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #fdf2f8 0%, #e0f2fe 100%); }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen">
+    <nav class="navbar bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex-1">
+                <a href="../index.html" class="btn btn-ghost text-xl">
+                    <span class="text-2xl">🌸</span>
+                    <span class="font-bold">言葉AI</span>
+                </a>
+            </div>
+            <div class="flex-none">
+                <a href="../index.html" class="btn btn-ghost btn-sm">← 返回首页</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8">📑 分类表</h1>
+
+        <!-- 分类标签 -->
+        <div class="flex justify-center mb-8">
+            <div class="tabs tabs-boxed">
+                <button class="tab tab-active" onclick="switchTab('nouns')" id="tab-nouns">名词</button>
+                <button class="tab" onclick="switchTab('verbs')" id="tab-verbs">动词</button>
+                <button class="tab" onclick="switchTab('adjectives')" id="tab-adjectives">形容词</button>
+                <button class="tab" onclick="switchTab('particles')" id="tab-particles">助词</button>
+            </div>
+        </div>
+
+        <!-- 内容区域 -->
+        <div class="card bg-white shadow-xl">
+            <div class="card-body">
+                <div id="contentArea">
+                    <div class="flex justify-center items-center h-64">
+                        <span class="loading loading-spinner loading-lg text-primary"></span>
+                        <span class="ml-4 text-gray-500">加载中...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentTab = 'nouns';
+
+        const typeNames = {
+            'nouns': '名词',
+            'verbs': '动词',
+            'adjectives': '形容词',
+            'particles': '助词'
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData('nouns');
+        });
+
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // 更新标签样式
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('tab-active'));
+            document.getElementById('tab-' + tab).classList.add('tab-active');
+            
+            loadData(tab);
+        }
+
+        async function loadData(tab) {
+            const contentArea = document.getElementById('contentArea');
+            contentArea.innerHTML = `
+                <div class="flex justify-center items-center h-64">
+                    <span class="loading loading-spinner loading-lg text-primary"></span>
+                    <span class="ml-4 text-gray-500">加载中...</span>
+                </div>
+            `;
+
+            try {
+                // 使用新的分类API
+                const response = await fetch(`/api/entries/categories/${tab}`);
+                const result = await response.json();
+
+                if (!result.success) {
+                    contentArea.innerHTML = '<p class="text-center text-gray-500">加载失败</p>';
+                    return;
+                }
+
+                const words = result.data.words || [];
+
+                if (words.length === 0) {
+                    contentArea.innerHTML = `
+                        <div class="text-center py-12">
+                            <div class="text-6xl mb-4">📭</div>
+                            <p class="text-gray-500">暂无${typeNames[tab]}数据</p>
+                            <a href="input.html" class="btn btn-primary mt-4">去录入</a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // 渲染表格
+                let html = `
+                    <p class="text-gray-500 mb-4">共 ${words.length} 个${typeNames[tab]}</p>
+                    <div class="overflow-x-auto">
+                        <table class="table table-zebra">
+                            <thead>
+                                <tr>
+                                    <th>词语</th>
+                                    <th>读音</th>
+                                    <th>意思</th>
+                                    <th>出处</th>
+                                    <th>录入时间</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                words.forEach(word => {
+                    const meaning = word.grammar_info && word.grammar_info.meaning ? word.grammar_info.meaning : '-';
+                    const createdDate = word.created_at ? new Date(word.created_at).toLocaleDateString() : '-';
+                    
+                    html += `
+                        <tr>
+                            <td class="font-bold text-lg">${word.word_jp}</td>
+                            <td>${word.hiragana}</td>
+                            <td>${meaning}</td>
+                            <td class="text-sm text-gray-600 max-w-xs truncate" title="${word.from_sentence || ''}">${word.from_sentence || '-'}</td>
+                            <td class="text-sm text-gray-400">${createdDate}</td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table></div>';
+                contentArea.innerHTML = html;
+
+            } catch (error) {
+                console.error('加载失败:', error);
+                contentArea.innerHTML = '<p class="text-center text-gray-500">加载失败，请检查网络</p>';
+            }
+        }
+    </script>
+</body>
+</html>

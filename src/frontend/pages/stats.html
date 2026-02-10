@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>统计 - 言葉AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #fdf2f8 0%, #e0f2fe 100%); }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen">
+    <nav class="navbar bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex-1">
+                <a href="../index.html" class="btn btn-ghost text-xl">
+                    <span class="text-2xl">🌸</span>
+                    <span class="font-bold">言葉AI</span>
+                </a>
+            </div>
+            <div class="flex-none">
+                <a href="../index.html" class="btn btn-ghost btn-sm">← 返回首页</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8">📊 学习统计</h1>
+
+        <!-- 总体统计 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="stats shadow bg-white">
+                <div class="stat">
+                    <div class="stat-title">总录入数</div>
+                    <div class="stat-value text-primary" id="totalEntries">-</div>
+                    <div class="stat-desc">句子/单词/短语</div>
+                </div>
+            </div>
+            <div class="stats shadow bg-white">
+                <div class="stat">
+                    <div class="stat-title">总单词数</div>
+                    <div class="stat-value text-secondary" id="totalWords">-</div>
+                    <div class="stat-desc">分词统计</div>
+                </div>
+            </div>
+            <div class="stats shadow bg-white">
+                <div class="stat">
+                    <div class="stat-title">动词数量</div>
+                    <div class="stat-value text-accent" id="totalVerbs">-</div>
+                    <div class="stat-desc">已掌握动词</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 今日统计 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="card bg-white shadow-lg">
+                <div class="card-body">
+                    <h2 class="card-title">📅 今日学习</h2>
+                    <div class="text-center py-6">
+                        <div class="text-5xl font-bold text-info" id="todayNew">-</div>
+                        <div class="text-gray-500 mt-2">今日新录入</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card bg-white shadow-lg">
+                <div class="card-body">
+                    <h2 class="card-title">🔥 连续学习</h2>
+                    <div class="text-center py-6">
+                        <div class="text-5xl font-bold text-warning" id="streakDays">-</div>
+                        <div class="text-gray-500 mt-2">天</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 词性分布 -->
+        <div class="card bg-white shadow-lg">
+            <div class="card-body">
+                <h2 class="card-title mb-4">📈 词性分布</h2>
+                <div id="typeStats">
+                    <div class="flex justify-center items-center h-32">
+                        <span class="loading loading-spinner loading-md text-primary"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStats();
+        });
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats/overview');
+                const result = await response.json();
+
+                if (!result.success) {
+                    document.getElementById('typeStats').innerHTML = '<p class="text-center text-gray-500">加载失败</p>';
+                    return;
+                }
+
+                const data = result.data;
+
+                // 更新数字
+                document.getElementById('totalEntries').textContent = data.total_entries || 0;
+                document.getElementById('totalWords').textContent = data.total_words || 0;
+                document.getElementById('totalVerbs').textContent = data.total_verbs || 0;
+                document.getElementById('todayNew').textContent = data.today_new || 0;
+                document.getElementById('streakDays').textContent = data.streak_days || 0;
+
+                // 词性分布
+                const typeNames = {
+                    'noun': '名词',
+                    'verb': '动词',
+                    'adjective_i': 'い形容词',
+                    'adjective_na': 'な形容词',
+                    'particle': '助词',
+                    'pronoun': '代词',
+                    'adverb': '副词',
+                    'aux_verb': '助动词',
+                    'proper_noun': '专有名词'
+                };
+
+                const typeStats = data.type_stats || {};
+                let html = '<div class="grid grid-cols-2 md:grid-cols-4 gap-4">';
+                
+                for (const [type, count] of Object.entries(typeStats)) {
+                    const name = typeNames[type] || type;
+                    html += `
+                        <div class="bg-gray-50 p-4 rounded-lg text-center">
+                            <div class="text-2xl font-bold text-primary">${count}</div>
+                            <div class="text-gray-600 text-sm">${name}</div>
+                        </div>
+                    `;
+                }
+                
+                html += '</div>';
+                document.getElementById('typeStats').innerHTML = html;
+
+            } catch (error) {
+                console.error('加载统计失败:', error);
+                document.getElementById('typeStats').innerHTML = '<p class="text-center text-gray-500">加载失败</p>';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>录入 - 言葉AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #fdf2f8 0%, #e0f2fe 100%);
+        }
+        .batch-indicator {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen">
+    <!-- 导航栏 -->
+    <nav class="navbar bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex-1">
+                <a href="../index.html" class="btn btn-ghost text-xl">
+                    <span class="text-2xl">🌸</span>
+                    <span class="font-bold">言葉AI</span>
+                </a>
+            </div>
+            <div class="flex-none">
+                <a href="../index.html" class="btn btn-ghost btn-sm">← 返回首页</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8">
+        <!-- 步骤指示器 -->
+        <div class="flex justify-center mb-8">
+            <ul class="steps">
+                <li class="step step-primary">粘贴数据</li>
+                <li class="step" id="step2">预览确认</li>
+                <li class="step" id="step3">完成入库</li>
+            </ul>
+        </div>
+
+        <!-- 录入表单 -->
+        <div class="max-w-3xl mx-auto">
+            <div class="card bg-white shadow-xl">
+                <div class="card-body">
+                    <h2 class="card-title text-2xl mb-2">📝 录入日语学习内容</h2>
+                    <p class="text-gray-500 mb-6">支持单条录入或批量录入（JSON数组）</p>
+                    
+                    <!-- 输入区域 -->
+                    <div class="form-control mb-4">
+                        <label class="label">
+                            <span class="label-text font-bold">AI识别结果 (JSON格式)</span>
+                            <span class="label-text-alt text-primary batch-indicator" id="batchIndicator" style="display: none;">
+                                📦 检测到批量数据
+                            </span>
+                        </label>
+                        <textarea 
+                            id="jsonInput" 
+                            class="textarea textarea-bordered h-80 font-mono text-sm"
+                            placeholder='在此粘贴JSON数据，支持单条或数组格式：
+
+单条示例：
+{
+  "content_type": "sentence",
+  "original_jp": "私は学生です",
+  "hiragana": "わたしはがくせいです",
+  "romaji": "watashi wa gakusei desu",
+  "chinese_meaning": "我是学生"
+}
+
+批量示例（JSON数组）：
+[
+  {
+    "content_type": "sentence",
+    "original_jp": "でんしゃはもうすぐ来ますか",
+    "hiragana": "でんしゃはもうすぐきますか",
+    "chinese_meaning": "火车很快就会来吗？"
+  },
+  {
+    "content_type": "sentence",
+    "original_jp": "東京駅は終点ですか。",
+    "hiragana": "とうきょうえきはしゅうてんですか。",
+    "chinese_meaning": "东京站是终点站吗？"
+  }
+]'
+                        ></textarea>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="flex gap-4 justify-end">
+                        <button class="btn btn-ghost" onclick="clearInput()">
+                            🗑️ 清空
+                        </button>
+                        <button class="btn btn-outline" onclick="loadExample('single')">
+                            📋 单条示例
+                        </button>
+                        <button class="btn btn-outline btn-secondary" onclick="loadExample('batch')">
+                            📦 批量示例
+                        </button>
+                        <button class="btn btn-primary" onclick="startSegmentation()">
+                            开始分拣 ▶️
+                        </button>
+                    </div>
+
+                    <!-- 提示信息 -->
+                    <div class="alert alert-info mt-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <div>
+                            <h3 class="font-bold">使用说明</h3>
+                            <div class="text-sm">
+                                1. 支持单条JSON或JSON数组格式<br>
+                                2. 批量录入时请使用JSON数组格式（方括号包裹）<br>
+                                3. 点击"开始分拣"后会显示所有数据的预览<br>
+                                4. 确认无误后点击"确认入库"即可批量保存
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 监听输入变化，检测是否为批量数据
+        document.getElementById('jsonInput').addEventListener('input', function() {
+            const value = this.value.trim();
+            const indicator = document.getElementById('batchIndicator');
+            
+            if (value.startsWith('[')) {
+                indicator.style.display = 'inline';
+            } else {
+                indicator.style.display = 'none';
+            }
+        });
+
+        // 加载示例
+        function loadExample(type) {
+            let example;
+            
+            if (type === 'single') {
+                example = {
+                    "content_type": "sentence",
+                    "original_jp": "私は学生です",
+                    "hiragana": "わたしはがくせいです",
+                    "romaji": "watashi wa gakusei desu",
+                    "chinese_meaning": "我是学生",
+                    "source": "duolingo_20260211_001.png",
+                    "tags": {
+                        "grammar_points": ["は主题助词", "です礼貌体"],
+                        "difficulty": 1
+                    }
+                };
+            } else {
+                // 批量示例
+                example = [
+                    {
+                        "content_type": "sentence",
+                        "original_jp": "でんしゃはもうすぐ来ますか",
+                        "hiragana": "でんしゃはもうすぐきますか",
+                        "romaji": "densha wa mousugu kimasu ka",
+                        "chinese_meaning": "火车很快就会来吗？",
+                        "tags": {
+                            "grammar_points": ["は（主题标记）", "もうすぐ（时间副词）", "ます（敬体）", "か（疑问助词）"],
+                            "scene": "交通/询问",
+                            "difficulty": 1
+                        }
+                    },
+                    {
+                        "content_type": "sentence",
+                        "original_jp": "東京駅は終点ですか。",
+                        "hiragana": "とうきょうえきはしゅうてんですか。",
+                        "romaji": "toukyou eki wa shuuten desu ka",
+                        "chinese_meaning": "东京站是终点站吗？",
+                        "tags": {
+                            "grammar_points": ["は（主题标记）", "です（判断助动词）", "か（疑问助词）"],
+                            "scene": "交通/车站",
+                            "difficulty": 1
+                        }
+                    },
+                    {
+                        "content_type": "sentence",
+                        "original_jp": "二十分ぐらいかかります。",
+                        "hiragana": "にじゅっぷんぐらいかかります。",
+                        "romaji": "nijuppun gurai kakarimasu",
+                        "chinese_meaning": "大概要花二十分钟。",
+                        "tags": {
+                            "grammar_points": ["ぐらい（大致数量）", "かかります（花费时间）", "ます（敬体）"],
+                            "scene": "时间/数量",
+                            "difficulty": 1
+                        }
+                    }
+                ];
+            }
+            
+            document.getElementById('jsonInput').value = JSON.stringify(example, null, 2);
+            
+            // 更新批量指示器
+            const indicator = document.getElementById('batchIndicator');
+            if (type === 'batch') {
+                indicator.style.display = 'inline';
+            } else {
+                indicator.style.display = 'none';
+            }
+        }
+
+        // 清空输入
+        function clearInput() {
+            document.getElementById('jsonInput').value = '';
+            document.getElementById('batchIndicator').style.display = 'none';
+        }
+
+        // 开始分拣
+        async function startSegmentation() {
+            const jsonInput = document.getElementById('jsonInput').value;
+            
+            if (!jsonInput.trim()) {
+                alert('请先粘贴JSON数据');
+                return;
+            }
+
+            let data;
+            try {
+                data = JSON.parse(jsonInput);
+            } catch (e) {
+                alert('JSON格式错误，请检查输入\n错误信息: ' + e.message);
+                return;
+            }
+
+            // 如果是单条，转换为数组
+            const isBatch = Array.isArray(data);
+            const entries = isBatch ? data : [data];
+
+            // 验证必填字段
+            const required = ['original_jp', 'hiragana', 'chinese_meaning'];
+            for (let i = 0; i < entries.length; i++) {
+                const entry = entries[i];
+                for (const field of required) {
+                    if (!entry[field]) {
+                        alert(`第${i + 1}条数据缺少必填字段: ${field}`);
+                        return;
+                    }
+                }
+            }
+
+            try {
+                const response = await fetch('/api/entries/preview', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)  // 发送原始数据（单条或数组）
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // 保存预览数据到sessionStorage
+                    sessionStorage.setItem('previewData', JSON.stringify(result.data));
+                    // 跳转到预览页面
+                    window.location.href = 'preview.html';
+                } else {
+                    alert('预览生成失败: ' + (result.error?.message || '未知错误'));
+                }
+            } catch (error) {
+                console.error('请求失败:', error);
+                alert('请求失败，请检查网络连接');
+            }
+        }
+    </script>
+</body>
+</html>

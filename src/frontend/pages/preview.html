@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>预览确认 - 言葉AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #fdf2f8 0%, #e0f2fe 100%);
+        }
+        .entry-card {
+            transition: all 0.3s ease;
+        }
+        .entry-card:hover {
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen">
+    <!-- 导航栏 -->
+    <nav class="navbar bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex-1">
+                <a href="../index.html" class="btn btn-ghost text-xl">
+                    <span class="text-2xl">🌸</span>
+                    <span class="font-bold">言葉AI</span>
+                </a>
+            </div>
+            <div class="flex-none gap-2">
+                <a href="input.html" class="btn btn-ghost btn-sm">← 返回修改</a>
+                <button class="btn btn-primary btn-sm" onclick="confirmEntry()">确认入库 ✅</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8">
+        <!-- 步骤指示器 -->
+        <div class="flex justify-center mb-8">
+            <ul class="steps">
+                <li class="step step-primary">粘贴数据</li>
+                <li class="step step-primary">预览确认</li>
+                <li class="step" id="step3">完成入库</li>
+            </ul>
+        </div>
+
+        <!-- 批量信息提示 -->
+        <div class="alert alert-info mb-6" id="batchInfo" style="display: none;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <div>
+                <h3 class="font-bold">批量录入模式</h3>
+                <div class="text-sm">共 <span id="totalCount" class="font-bold text-lg">0</span> 条数据等待入库</div>
+            </div>
+        </div>
+
+        <!-- 数据预览列表 -->
+        <div id="entriesList" class="space-y-6">
+            <!-- 动态生成 -->
+        </div>
+
+        <!-- 确认提示 -->
+        <div class="alert alert-warning mt-8">
+            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            <div>
+                <h3 class="font-bold">请在确认前检查</h3>
+                <div class="text-sm">确认后所有数据将写入数据库。如发现错误，请点击"返回修改"进行调整。</div>
+            </div>
+        </div>
+
+        <!-- 底部操作栏 -->
+        <div class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md shadow-lg p-4 z-50">
+            <div class="container mx-auto flex justify-between items-center">
+                <div class="text-gray-600">
+                    共 <span id="bottomCount" class="font-bold text-primary">0</span> 条数据
+                </div>
+                <div class="flex gap-4">
+                    <a href="input.html" class="btn btn-ghost">返回修改</a>
+                    <button class="btn btn-primary" onclick="confirmEntry()">
+                        确认全部入库 ✅
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部占位，避免被固定栏遮挡 -->
+        <div class="h-20"></div>
+    </main>
+
+    <script>
+        // 词性中文映射
+        const wordTypeMap = {
+            'noun': '名词',
+            'verb': '动词',
+            'adjective_i': 'い形容词',
+            'adjective_na': 'な形容词',
+            'particle': '助词',
+            'pronoun': '代词',
+            'adverb': '副词',
+            'aux_verb': '助动词',
+            'proper_noun': '专有名词',
+            'conjunction': '连词',
+            'interjection': '感叹词',
+            'other': '其他'
+        };
+
+        let previewData = null;
+
+        // 页面加载时显示预览数据
+        document.addEventListener('DOMContentLoaded', function() {
+            const data = JSON.parse(sessionStorage.getItem('previewData') || '{}');
+            
+            if (!data.entries || data.entries.length === 0) {
+                alert('没有预览数据，请先录入');
+                window.location.href = 'input.html';
+                return;
+            }
+
+            previewData = data;
+            const isBatch = data.is_batch || data.total_count > 1;
+            
+            // 显示批量信息
+            if (isBatch) {
+                document.getElementById('batchInfo').style.display = 'flex';
+                document.getElementById('totalCount').textContent = data.total_count;
+            }
+            document.getElementById('bottomCount').textContent = data.total_count;
+
+            // 渲染所有条目
+            const container = document.getElementById('entriesList');
+            
+            data.entries.forEach((entry, index) => {
+                const card = createEntryCard(entry, index + 1, data.total_count);
+                container.appendChild(card);
+            });
+        });
+
+        // 创建单条数据卡片
+        function createEntryCard(entry, index, total) {
+            const div = document.createElement('div');
+            div.className = 'card bg-white shadow-lg entry-card';
+            
+            const original = entry.original_data;
+            const words = entry.segmented_words || [];
+            const phonetics = entry.phonetic_index || [];
+            const verbs = entry.verbs_detected || [];
+            
+            let html = `
+                <div class="card-body">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="card-title text-lg">
+                            📄 第${index}条 / 共${total}条
+                        </h3>
+                        <span class="badge badge-outline">${words.length}个词语</span>
+                    </div>
+                    
+                    <!-- 原文展示 -->
+                    <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                        <p class="text-xl font-bold mb-2">${original.original_jp}</p>
+                        <p class="text-gray-600 mb-1">${original.hiragana}</p>
+                        ${original.romaji ? `<p class="text-gray-500 text-sm mb-2">${original.romaji}</p>` : ''}
+                        <hr class="my-2">
+                        <p class="text-gray-700">${original.chinese_meaning}</p>
+                    </div>
+            `;
+
+            // 分词表格
+            if (words.length > 0) {
+                html += `
+                    <div class="overflow-x-auto mb-4">
+                        <table class="table table-zebra table-sm">
+                            <thead>
+                                <tr>
+                                    <th>位置</th>
+                                    <th>词语</th>
+                                    <th>读音</th>
+                                    <th>词性</th>
+                                    <th>意思</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                words.forEach(word => {
+                    html += `
+                        <tr>
+                            <td>${word.position}</td>
+                            <td class="font-bold">${word.word_jp}</td>
+                            <td>${word.hiragana}</td>
+                            <td><span class="badge badge-outline badge-sm">${wordTypeMap[word.word_type] || word.word_type}</span></td>
+                            <td class="text-sm text-gray-600">${word.grammar_info?.meaning || ''}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table></div>';
+            }
+
+            // 动词识别
+            if (verbs.length > 0) {
+                html += '<div class="mb-4"><h4 class="font-bold text-sm text-gray-600 mb-2">🔤 动词识别</h4>';
+                verbs.forEach(verb => {
+                    html += `
+                        <div class="alert alert-info py-2">
+                            <span class="text-sm">${verb.word} → 原型: ${verb.prototype || '未知'}, 形式: ${verb.form || '原型'}</span>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+
+            // 50音索引
+            if (phonetics.length > 0) {
+                html += `
+                    <div>
+                        <h4 class="font-bold text-sm text-gray-600 mb-2">🈳 50音索引</h4>
+                        <div class="flex flex-wrap gap-1">
+                            ${phonetics.map(p => `<span class="badge badge-primary badge-sm">${p}</span>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+            div.innerHTML = html;
+            return div;
+        }
+
+        // 确认入库
+        async function confirmEntry() {
+            if (!confirm(`确认要将这${previewData.total_count}条数据全部入库吗？`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/entries/${previewData.preview_id}/confirm`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        entries: previewData.entries
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(`✅ 成功入库${result.data.total_entries}条数据！`);
+                    sessionStorage.removeItem('previewData');
+                    window.location.href = '../index.html';
+                } else {
+                    alert('入库失败: ' + (result.error?.message || '未知错误'));
+                }
+            } catch (error) {
+                console.error('请求失败:', error);
+                alert('请求失败，请检查网络连接');
+            }
+        }
+    </script>
+</body>
+</html>

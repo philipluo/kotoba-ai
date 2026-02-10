@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>每日一练 - 言葉AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #fdf2f8 0%, #e0f2fe 100%);
+        }
+        .question-card {
+            transition: all 0.3s ease;
+        }
+        .option-btn:hover {
+            transform: translateX(4px);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen">
+    <!-- 导航栏 -->
+    <nav class="navbar bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex-1">
+                <a href="../index.html" class="btn btn-ghost text-xl">
+                    <span class="text-2xl">🌸</span>
+                    <span class="font-bold">言葉AI</span>
+                </a>
+            </div>
+            <div class="flex-none">
+                <a href="../index.html" class="btn btn-ghost btn-sm">← 返回首页</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8">
+        <!-- 进度头部 -->
+        <div class="card bg-white shadow-lg mb-8">
+            <div class="card-body">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div>
+                        <h1 class="text-2xl font-bold mb-2">🎯 每日一练</h1>
+                        <p class="text-gray-600">今日练习 - <span id="currentDate"></span></p>
+                    </div>
+                    <div class="mt-4 md:mt-0 text-center">
+                        <div class="text-3xl font-bold text-primary">
+                            <span id="currentQuestion">0</span> / <span id="totalQuestions">20</span>
+                        </div>
+                        <div class="text-sm text-gray-500">题目进度</div>
+                    </div>
+                </div>
+                <progress class="progress progress-primary w-full mt-4" id="progressBar" value="0" max="20"></progress>
+            </div>
+        </div>
+
+        <!-- 练习区域 -->
+        <div id="practiceArea" class="max-w-3xl mx-auto">
+            <!-- 题目卡片 -->
+            <div class="card bg-white shadow-xl question-card" id="questionCard">
+                <div class="card-body">
+                    <div class="flex justify-between items-start mb-4">
+                        <span class="badge badge-primary" id="questionType">翻译题</span>
+                        <span class="text-sm text-gray-400" id="questionNumber">第1题</span>
+                    </div>
+
+                    <h3 class="text-xl font-bold mb-6" id="questionText"></h3>
+
+                    <!-- 选项区域 -->
+                    <div id="optionsArea" class="space-y-3">
+                        <!-- 动态生成 -->
+                    </div>
+
+                    <!-- 提示 -->
+                    <div class="alert alert-info mt-6" id="hintArea" style="display: none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span id="hintText"></span>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="flex justify-between mt-6">
+                        <button class="btn btn-ghost" onclick="showHint()">
+                            💡 提示
+                        </button>
+                        <button class="btn btn-primary" onclick="nextQuestion()">
+                            下一题 →
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 完成区域 -->
+            <div class="card bg-white shadow-xl" id="completeArea" style="display: none;">
+                <div class="card-body text-center">
+                    <div class="text-6xl mb-4">🎉</div>
+                    <h2 class="text-3xl font-bold mb-4">练习完成！</h2>
+                    <div class="text-5xl font-bold text-primary mb-4">
+                        <span id="correctCount">0</span> / <span id="totalCount">20</span>
+                    </div>
+                    <p class="text-gray-600 mb-6">正确率: <span id="accuracy">0%</span></p>
+
+                    <div class="flex gap-4 justify-center">
+                        <button class="btn btn-outline" onclick="generatePrompt()">
+                            💬 生成豆包Prompt
+                        </button>
+                        <a href="../index.html" class="btn btn-primary">
+                            返回首页
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prompt显示区域 -->
+        <div class="card bg-gray-800 text-white shadow-xl mt-8" id="promptArea" style="display: none;">
+            <div class="card-body">
+                <h3 class="card-title text-white mb-4">💬 豆包语音练习Prompt</h3>
+                <pre class="bg-gray-900 p-4 rounded-lg overflow-x-auto text-sm whitespace-pre-wrap" id="promptText"></pre>
+                <div class="flex gap-4 mt-4">
+                    <button class="btn btn-primary" onclick="copyPrompt()">
+                        📋 复制到剪贴板
+                    </button>
+                    <button class="btn btn-ghost" onclick="closePrompt()">
+                        关闭
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let questions = [];
+        let currentIndex = 0;
+        let answers = [];
+
+        // 页面加载时获取题目
+        document.addEventListener('DOMContentLoaded', async function() {
+            document.getElementById('currentDate').textContent = new Date().toLocaleDateString('zh-CN');
+            await loadQuestions();
+        });
+
+        // 加载题目
+        async function loadQuestions() {
+            try {
+                const response = await fetch('/api/practice/daily');
+                const data = await response.json();
+
+                if (data.success) {
+                    questions = data.data.questions;
+                    document.getElementById('totalQuestions').textContent = questions.length;
+                    document.getElementById('progressBar').max = questions.length;
+                    showQuestion(0);
+                }
+            } catch (error) {
+                console.error('加载题目失败:', error);
+                // 使用示例题目
+                loadExampleQuestions();
+            }
+        }
+
+        // 示例题目
+        function loadExampleQuestions() {
+            questions = [
+                {
+                    id: 1,
+                    type: 'translation_jp_to_cn',
+                    question: '私は学生です',
+                    correct_answer: '我是学生',
+                    hint: '读音: わたしはがくせいです',
+                    options: ['我是学生', '你是学生', '他是学生']
+                },
+                {
+                    id: 2,
+                    type: 'translation_cn_to_jp',
+                    question: '我是学生',
+                    correct_answer: '私は学生です',
+                    hint: '读音: watashi wa gakusei desu',
+                    options: ['私は学生です', '私は先生です', '彼は学生です']
+                }
+            ];
+            document.getElementById('totalQuestions').textContent = questions.length;
+            showQuestion(0);
+        }
+
+        // 显示题目
+        function showQuestion(index) {
+            if (index >= questions.length) {
+                showComplete();
+                return;
+            }
+
+            const q = questions[index];
+            currentIndex = index;
+
+            // 更新进度
+            document.getElementById('currentQuestion').textContent = index + 1;
+            document.getElementById('progressBar').value = index + 1;
+            document.getElementById('questionNumber').textContent = `第${index + 1}题`;
+
+            // 更新题目内容
+            document.getElementById('questionText').textContent = q.question;
+            document.getElementById('hintText').textContent = q.hint || '暂无提示';
+            document.getElementById('hintArea').style.display = 'none';
+
+            // 更新题型标签
+            const typeMap = {
+                'translation_jp_to_cn': '日译中',
+                'translation_cn_to_jp': '中译日',
+                'word_recognition': '单词识别',
+                'verb_conjugation': '动词活用'
+            };
+            document.getElementById('questionType').textContent = typeMap[q.type] || '练习题';
+
+            // 生成选项
+            const optionsArea = document.getElementById('optionsArea');
+            optionsArea.innerHTML = '';
+
+            if (q.options && q.options.length > 0) {
+                q.options.forEach((option, i) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'option-btn btn btn-outline w-full text-left justify-start';
+                    btn.textContent = `${String.fromCharCode(65 + i)}. ${option}`;
+                    btn.onclick = () => selectOption(option, q.correct_answer);
+                    optionsArea.appendChild(btn);
+                });
+            } else {
+                // 简答题输入框
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'input input-bordered w-full';
+                input.placeholder = '请输入答案...';
+                input.id = 'answerInput';
+                optionsArea.appendChild(input);
+            }
+        }
+
+        // 选择选项
+        function selectOption(selected, correct) {
+            const isCorrect = selected === correct;
+            answers.push({
+                question_id: questions[currentIndex].id,
+                user_answer: selected,
+                is_correct: isCorrect
+            });
+
+            // 显示正确/错误
+            const buttons = document.querySelectorAll('.option-btn');
+            buttons.forEach(btn => {
+                if (btn.textContent.includes(correct)) {
+                    btn.classList.remove('btn-outline');
+                    btn.classList.add('btn-success');
+                } else if (btn.textContent.includes(selected) && !isCorrect) {
+                    btn.classList.remove('btn-outline');
+                    btn.classList.add('btn-error');
+                }
+            });
+
+            // 延迟后显示下一题
+            setTimeout(() => {
+                nextQuestion();
+            }, 1000);
+        }
+
+        // 显示提示
+        function showHint() {
+            document.getElementById('hintArea').style.display = 'flex';
+        }
+
+        // 下一题
+        function nextQuestion() {
+            showQuestion(currentIndex + 1);
+        }
+
+        // 显示完成界面
+        function showComplete() {
+            document.getElementById('questionCard').style.display = 'none';
+            document.getElementById('completeArea').style.display = 'block';
+
+            const correct = answers.filter(a => a.is_correct).length;
+            const total = questions.length;
+            const accuracy = Math.round((correct / total) * 100);
+
+            document.getElementById('correctCount').textContent = correct;
+            document.getElementById('totalCount').textContent = total;
+            document.getElementById('accuracy').textContent = accuracy + '%';
+        }
+
+        // 生成Prompt
+        async function generatePrompt() {
+            try {
+                const response = await fetch('/api/practice/prompt', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        questions: questions,
+                        style: 'gentle',
+                        include_hints: true
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('promptText').textContent = data.data.prompt;
+                    document.getElementById('promptArea').style.display = 'block';
+                    document.getElementById('promptArea').scrollIntoView({ behavior: 'smooth' });
+                }
+            } catch (error) {
+                console.error('生成Prompt失败:', error);
+                alert('生成失败，请重试');
+            }
+        }
+
+        // 复制Prompt
+        function copyPrompt() {
+            const text = document.getElementById('promptText').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('已复制到剪贴板！');
+            });
+        }
+
+        // 关闭Prompt
+        function closePrompt() {
+            document.getElementById('promptArea').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

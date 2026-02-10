@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>50音图表 - 言葉AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #fdf2f8 0%, #e0f2fe 100%);
+        }
+        .phonetic-btn {
+            transition: all 0.2s;
+        }
+        .phonetic-btn:hover {
+            transform: scale(1.1);
+        }
+        .phonetic-btn.active {
+            background: linear-gradient(135deg, #f472b6, #db2777);
+            color: white;
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen">
+    <!-- 导航栏 -->
+    <nav class="navbar bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex-1">
+                <a href="../index.html" class="btn btn-ghost text-xl">
+                    <span class="text-2xl">🌸</span>
+                    <span class="font-bold">言葉AI</span>
+                </a>
+            </div>
+            <div class="flex-none">
+                <a href="../index.html" class="btn btn-ghost btn-sm">← 返回首页</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8">🈳 50音图表</h1>
+
+        <!-- 切换按钮 -->
+        <div class="flex justify-center mb-8">
+            <div class="join">
+                <button class="btn join-item btn-active" id="btnHiragana" onclick="showHiragana()">平假名</button>
+                <button class="btn join-item" id="btnKatakana" onclick="showKatakana()">片假名</button>
+            </div>
+        </div>
+
+        <!-- 50音图表 -->
+        <div class="card bg-white shadow-xl mb-8">
+            <div class="card-body">
+                <div id="gojyuonChart" class="space-y-4">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 搜索结果 -->
+        <div class="card bg-white shadow-xl" id="searchResults" style="display: none;">
+            <div class="card-body">
+                <h3 class="card-title mb-4">
+                    检索结果 
+                    <span class="text-sm font-normal text-gray-500" id="searchPhonetic"></span>
+                </h3>
+                <div id="resultsList" class="space-y-3">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentPhonetics = {};
+        let currentMode = 'hiragana';
+
+        // 页面加载时获取50音数据
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch('/api/phonetics');
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentPhonetics = data.data;
+                    renderChart();
+                }
+            } catch (error) {
+                console.error('加载50音失败:', error);
+                // 使用默认数据
+                loadDefaultPhonetics();
+            }
+        });
+
+        // 默认50音数据
+        function loadDefaultPhonetics() {
+            currentPhonetics = {
+                gojyuon: {
+                    1: [
+                        {hiragana: 'あ', katakana: 'ア', romaji: 'a'},
+                        {hiragana: 'い', katakana: 'イ', romaji: 'i'},
+                        {hiragana: 'う', katakana: 'ウ', romaji: 'u'},
+                        {hiragana: 'え', katakana: 'エ', romaji: 'e'},
+                        {hiragana: 'お', katakana: 'オ', romaji: 'o'}
+                    ],
+                    2: [
+                        {hiragana: 'か', katakana: 'カ', romaji: 'ka'},
+                        {hiragana: 'き', katakana: 'キ', romaji: 'ki'},
+                        {hiragana: 'く', katakana: 'ク', romaji: 'ku'},
+                        {hiragana: 'け', katakana: 'ケ', romaji: 'ke'},
+                        {hiragana: 'こ', katakana: 'コ', romaji: 'ko'}
+                    ],
+                    // ... 其他行
+                }
+            };
+            renderChart();
+        }
+
+        // 渲染图表
+        function renderChart() {
+            const container = document.getElementById('gojyuonChart');
+            container.innerHTML = '';
+
+            const rows = ['あ行', 'か行', 'さ行', 'た行', 'な行', 'は行', 'ま行', 'や行', 'ら行', 'わ行'];
+            const rowNums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+            rowNums.forEach((rowNum, index) => {
+                const rowData = currentPhonetics.gojyuon?.[rowNum] || [];
+                if (rowData.length === 0) return;
+
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'flex items-center gap-4';
+
+                // 行标签
+                const label = document.createElement('span');
+                label.className = 'w-16 font-bold text-gray-600';
+                label.textContent = rows[index];
+                rowDiv.appendChild(label);
+
+                // 假名按钮
+                const buttonsDiv = document.createElement('div');
+                buttonsDiv.className = 'flex gap-2 flex-wrap';
+
+                rowData.forEach(char => {
+                    const btn = document.createElement('button');
+                    btn.className = 'phonetic-btn btn btn-outline btn-lg w-16 h-16 text-2xl';
+                    btn.textContent = currentMode === 'hiragana' ? char.hiragana : char.katakana;
+                    btn.onclick = () => searchByPhonetic(char.hiragana);
+                    buttonsDiv.appendChild(btn);
+                });
+
+                rowDiv.appendChild(buttonsDiv);
+                container.appendChild(rowDiv);
+            });
+        }
+
+        // 显示平假名
+        function showHiragana() {
+            currentMode = 'hiragana';
+            document.getElementById('btnHiragana').classList.add('btn-active');
+            document.getElementById('btnKatakana').classList.remove('btn-active');
+            renderChart();
+        }
+
+        // 显示片假名
+        function showKatakana() {
+            currentMode = 'katakana';
+            document.getElementById('btnKatakana').classList.add('btn-active');
+            document.getElementById('btnHiragana').classList.remove('btn-active');
+            renderChart();
+        }
+
+        // 按50音检索
+        async function searchByPhonetic(phonetic) {
+            // 高亮选中的按钮
+            document.querySelectorAll('.phonetic-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent === phonetic) {
+                    btn.classList.add('active');
+                }
+            });
+
+            try {
+                const response = await fetch(`/api/phonetics/${phonetic}/entries`);
+                const data = await response.json();
+
+                const resultsDiv = document.getElementById('searchResults');
+                const resultsList = document.getElementById('resultsList');
+                const searchPhonetic = document.getElementById('searchPhonetic');
+
+                resultsDiv.style.display = 'block';
+                searchPhonetic.textContent = `(${data.data.total_count}条结果)`;
+                resultsList.innerHTML = '';
+
+                if (data.data.raw_entries.length === 0) {
+                    resultsList.innerHTML = '<p class="text-gray-500 text-center">暂无相关内容</p>';
+                    return;
+                }
+
+                data.data.raw_entries.forEach(entry => {
+                    const item = document.createElement('div');
+                    item.className = 'bg-gray-50 p-4 rounded-lg';
+                    item.innerHTML = `
+                        <p class="text-lg font-bold">${entry.original_jp}</p>
+                        <p class="text-gray-600">${entry.chinese_meaning}</p>
+                        <p class="text-sm text-gray-400 mt-1">录入时间: ${new Date(entry.created_at).toLocaleDateString()}</p>
+                    `;
+                    resultsList.appendChild(item);
+                });
+
+                // 滚动到结果区域
+                resultsDiv.scrollIntoView({ behavior: 'smooth' });
+
+            } catch (error) {
+                console.error('检索失败:', error);
+            }
+        }
+    </script>
+</body>
+</html>

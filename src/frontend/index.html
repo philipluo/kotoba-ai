@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>言葉AI (Kotoba AI) - 日语学习助手</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #fdf2f8 0%, #e0f2fe 100%);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen">
+    <!-- 导航栏 -->
+    <nav class="navbar bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex-1">
+                <a href="/" class="btn btn-ghost text-xl">
+                    <span class="text-2xl">🌸</span>
+                    <span class="font-bold bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
+                        言葉AI
+                    </span>
+                </a>
+            </div>
+            <div class="flex-none gap-2">
+                <a href="pages/input.html" class="btn btn-primary btn-sm">
+                    <span>📝</span> 录入
+                </a>
+                <a href="pages/practice.html" class="btn btn-secondary btn-sm">
+                    <span>🎯</span> 练习
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- 欢迎语 -->
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold mb-4">
+                <span class="text-gray-800">欢迎来到</span>
+                <span class="bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
+                    言葉AI
+                </span>
+            </h1>
+            <p class="text-gray-600 text-lg">「言葉の力、AIの智」- 让日语学习更智能</p>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+            <div class="stats shadow bg-white card-hover">
+                <div class="stat">
+                    <div class="stat-title">总词数</div>
+                    <div class="stat-value text-primary" id="totalWords">0</div>
+                    <div class="stat-desc">已学习内容</div>
+                </div>
+            </div>
+            <div class="stats shadow bg-white card-hover">
+                <div class="stat">
+                    <div class="stat-title">动词</div>
+                    <div class="stat-value text-secondary" id="verbCount">0</div>
+                    <div class="stat-desc">掌握动词</div>
+                </div>
+            </div>
+            <div class="stats shadow bg-white card-hover">
+                <div class="stat">
+                    <div class="stat-title">今日新学</div>
+                    <div class="stat-value text-accent" id="todayNew">0</div>
+                    <div class="stat-desc">新增内容</div>
+                </div>
+            </div>
+            <div class="stats shadow bg-white card-hover">
+                <div class="stat">
+                    <div class="stat-title">连续学习</div>
+                    <div class="stat-value text-info" id="streakDays">0</div>
+                    <div class="stat-desc">天</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 功能入口 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <a href="pages/gojyuon.html" class="card bg-gradient-to-br from-pink-100 to-pink-200 card-hover">
+                <div class="card-body items-center text-center">
+                    <div class="text-5xl mb-4">🈳</div>
+                    <h2 class="card-title">50音图表</h2>
+                    <p class="text-sm text-gray-600">点击发音检索已学内容</p>
+                </div>
+            </a>
+            <a href="pages/categories.html" class="card bg-gradient-to-br from-blue-100 to-blue-200 card-hover">
+                <div class="card-body items-center text-center">
+                    <div class="text-5xl mb-4">📑</div>
+                    <h2 class="card-title">分类表</h2>
+                    <p class="text-sm text-gray-600">名/动/形/助词系统浏览</p>
+                </div>
+            </a>
+            <a href="pages/words.html" class="card bg-gradient-to-br from-green-100 to-green-200 card-hover">
+                <div class="card-body items-center text-center">
+                    <div class="text-5xl mb-4">📚</div>
+                    <h2 class="card-title">词库</h2>
+                    <p class="text-sm text-gray-600">查看所有单词和句子</p>
+                </div>
+            </a>
+            <a href="pages/stats.html" class="card bg-gradient-to-br from-purple-100 to-purple-200 card-hover">
+                <div class="card-body items-center text-center">
+                    <div class="text-5xl mb-4">📊</div>
+                    <h2 class="card-title">统计</h2>
+                    <p class="text-sm text-gray-600">学习进度和数据分析</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- 每日练习卡片 -->
+        <div class="card bg-gradient-to-r from-orange-100 to-yellow-100 shadow-xl mb-12">
+            <div class="card-body flex flex-col md:flex-row items-center justify-between">
+                <div>
+                    <h2 class="card-title text-2xl mb-2">🎯 每日一练</h2>
+                    <p class="text-gray-600">今天还有20道题等待完成，预计需要15分钟</p>
+                    <div class="flex gap-4 mt-4 text-sm">
+                        <span class="badge badge-primary">新学 8题</span>
+                        <span class="badge badge-secondary">复习 12题</span>
+                    </div>
+                </div>
+                <div class="mt-4 md:mt-0">
+                    <a href="pages/practice.html" class="btn btn-primary btn-lg">
+                        开始练习 →
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 快速录入 -->
+        <div class="card bg-white shadow-lg">
+            <div class="card-body">
+                <h2 class="card-title mb-4">⚡ 快速录入</h2>
+                <p class="text-gray-600 mb-4">从多邻国学习后，将AI识别的JSON数据粘贴到这里</p>
+                <a href="pages/input.html" class="btn btn-outline btn-primary">
+                    去录入页面
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-white/80 backdrop-blur-md mt-12 py-6">
+        <div class="container mx-auto px-4 text-center text-gray-500">
+            <p>言葉AI (Kotoba AI) - 您的日语学习伙伴</p>
+            <p class="text-sm mt-2">Made with ❤️ for Japanese learners</p>
+        </div>
+    </footer>
+
+    <script>
+        // 加载统计数据
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats/overview');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('totalWords').textContent = data.data.total_entries || 0;
+                    document.getElementById('verbCount').textContent = data.data.total_verbs || 0;
+                    document.getElementById('todayNew').textContent = data.data.today_new || 0;
+                    document.getElementById('streakDays').textContent = data.data.streak_days || 0;
+                }
+            } catch (error) {
+                console.error('加载统计失败:', error);
+            }
+        }
+
+        // 页面加载时执行
+        document.addEventListener('DOMContentLoaded', loadStats);
+    </script>
+</body>
+</html>

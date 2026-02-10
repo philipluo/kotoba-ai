@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>词库 - 言葉AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #fdf2f8 0%, #e0f2fe 100%); }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen">
+    <nav class="navbar bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex-1">
+                <a href="../index.html" class="btn btn-ghost text-xl">
+                    <span class="text-2xl">🌸</span>
+                    <span class="font-bold">言葉AI</span>
+                </a>
+            </div>
+            <div class="flex-none">
+                <a href="../index.html" class="btn btn-ghost btn-sm">← 返回首页</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8">📚 词库</h1>
+
+        <!-- 搜索框 -->
+        <div class="flex justify-center mb-8">
+            <div class="join w-full max-w-lg">
+                <input type="text" placeholder="搜索单词或句子..." class="input input-bordered join-item w-full" id="searchInput" />
+                <button class="btn join-item" onclick="search()">🔍 搜索</button>
+            </div>
+        </div>
+
+        <!-- 内容区域 -->
+        <div class="card bg-white shadow-xl">
+            <div class="card-body">
+                <div id="contentArea">
+                    <div class="flex justify-center items-center h-64">
+                        <span class="loading loading-spinner loading-lg text-primary"></span>
+                        <span class="ml-4 text-gray-500">加载中...</span>
+                    </div>
+                </div>
+
+                <!-- 分页 -->
+                <div class="flex justify-center mt-6" id="pagination" style="display: none;">
+                    <div class="join">
+                        <button class="join-item btn" onclick="changePage(-1)">«</button>
+                        <button class="join-item btn" id="pageInfo">第 1 页</button>
+                        <button class="join-item btn" onclick="changePage(1)">»</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentPage = 1;
+        let totalPages = 1;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadEntries();
+        });
+
+        async function loadEntries(page = 1) {
+            currentPage = page;
+            const contentArea = document.getElementById('contentArea');
+            
+            contentArea.innerHTML = `
+                <div class="flex justify-center items-center h-64">
+                    <span class="loading loading-spinner loading-lg text-primary"></span>
+                    <span class="ml-4 text-gray-500">加载中...</span>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`/api/entries?page=${page}&limit=20`);
+                const result = await response.json();
+
+                if (!result.success) {
+                    contentArea.innerHTML = '<p class="text-center text-gray-500">加载失败</p>';
+                    return;
+                }
+
+                const entries = result.data.items;
+                totalPages = result.data.pagination.total_pages;
+
+                if (entries.length === 0) {
+                    contentArea.innerHTML = `
+                        <div class="text-center py-12">
+                            <div class="text-6xl mb-4">📭</div>
+                            <p class="text-gray-500">暂无数据</p>
+                            <a href="input.html" class="btn btn-primary mt-4">去录入</a>
+                        </div>
+                    `;
+                    document.getElementById('pagination').style.display = 'none';
+                    return;
+                }
+
+                // 渲染列表
+                let html = '<div class="space-y-4">';
+                
+                entries.forEach(entry => {
+                    html += `
+                        <div class="bg-gray-50 p-4 rounded-lg hover:shadow-md transition-shadow cursor-pointer" onclick="showDetail(${entry.id})">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <p class="text-xl font-bold mb-1">${entry.original_jp}</p>
+                                    <p class="text-gray-600 text-sm mb-1">${entry.hiragana}</p>
+                                    <p class="text-gray-700">${entry.chinese_meaning}</p>
+                                </div>
+                                <span class="badge badge-outline">${entry.content_type === 'sentence' ? '句子' : '单词'}</span>
+                            </div>
+                            <div class="mt-2 text-xs text-gray-400">
+                                录入时间: ${new Date(entry.created_at).toLocaleDateString()}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += '</div>';
+                contentArea.innerHTML = html;
+
+                // 显示分页
+                if (totalPages > 1) {
+                    document.getElementById('pagination').style.display = 'flex';
+                    document.getElementById('pageInfo').textContent = `第 ${currentPage} / ${totalPages} 页`;
+                }
+
+            } catch (error) {
+                console.error('加载失败:', error);
+                contentArea.innerHTML = '<p class="text-center text-gray-500">加载失败，请检查网络</p>';
+            }
+        }
+
+        function changePage(delta) {
+            const newPage = currentPage + delta;
+            if (newPage >= 1 && newPage <= totalPages) {
+                loadEntries(newPage);
+            }
+        }
+
+        function search() {
+            const keyword = document.getElementById('searchInput').value;
+            if (!keyword) {
+                loadEntries(1);
+                return;
+            }
+            
+            // 简单的客户端搜索
+            alert('搜索功能: ' + keyword);
+        }
+
+        function showDetail(id) {
+            alert('查看详情功能，ID: ' + id);
+        }
+    </script>
+</body>
+</html>
