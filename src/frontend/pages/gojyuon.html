@@ -12,13 +12,25 @@
         }
         .phonetic-btn {
             transition: all 0.2s;
+            padding: 2px;
         }
         .phonetic-btn:hover {
-            transform: scale(1.1);
+            transform: scale(1.05);
         }
-        .phonetic-btn.active {
-            background: linear-gradient(135deg, #f472b6, #db2777);
+        .phonetic-btn.selected {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
             color: white;
+            border-color: #3b82f6;
+        }
+        .phonetic-btn.selected .romaji-text {
+            color: rgba(255, 255, 255, 0.8);
+        }
+        .highlight-match {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -38,22 +50,79 @@
         </div>
     </nav>
 
-    <main class="container mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold text-center mb-8">🈳 50音图表</h1>
+    <main class="container mx-auto px-4 py-6">
+        <h1 class="text-3xl font-bold text-center mb-4">🈳 50音图表</h1>
 
-        <!-- 切换按钮 -->
-        <div class="flex justify-center mb-8">
+        <!-- 发音控制面板 -->
+        <div class="flex justify-center mb-6">
             <div class="join">
-                <button class="btn join-item btn-active" id="btnHiragana" onclick="showHiragana()">平假名</button>
-                <button class="btn join-item" id="btnKatakana" onclick="showKatakana()">片假名</button>
+                <button class="btn join-item btn-sm" onclick="toggleSpeech()" id="speechToggle">
+                    🔊 发音开启
+                </button>
+                <button class="btn join-item btn-sm" onclick="testSpeech()">
+                    🎵 测试发音
+                </button>
+                <select class="select select-bordered select-sm join-item" onchange="changeSpeechRate(this.value)">
+                    <option value="0.5">慢速</option>
+                    <option value="0.8" selected>正常</option>
+                    <option value="1.0">快速</option>
+                </select>
             </div>
         </div>
 
-        <!-- 50音图表 -->
-        <div class="card bg-white shadow-xl mb-8">
-            <div class="card-body">
-                <div id="gojyuonChart" class="space-y-4">
-                    <!-- 动态生成 -->
+        <!-- 清音 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            <!-- 平假名清音 -->
+            <div class="card bg-pink-50 shadow-lg border border-pink-100">
+                <div class="card-body py-4">
+                    <h2 class="card-title text-xl text-pink-700 mb-3 justify-center">清音平假名</h2>
+                    <div id="hiraganaChart" class="flex flex-col items-center gap-1"></div>
+                </div>
+            </div>
+
+            <!-- 片假名清音 -->
+            <div class="card bg-blue-50 shadow-lg border border-blue-100">
+                <div class="card-body py-4">
+                    <h2 class="card-title text-xl text-blue-700 mb-3 justify-center">清音片假名</h2>
+                    <div id="katakanaChart" class="flex flex-col items-center gap-1"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 浊音 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            <!-- 平假名浊音 -->
+            <div class="card bg-rose-50 shadow-lg border border-rose-100">
+                <div class="card-body py-4">
+                    <h2 class="card-title text-xl text-rose-700 mb-3 justify-center">浊音（だくおん）</h2>
+                    <div id="hiraganaDakuon" class="flex flex-col items-center gap-1"></div>
+                </div>
+            </div>
+
+            <!-- 片假名浊音 -->
+            <div class="card bg-indigo-50 shadow-lg border border-indigo-100">
+                <div class="card-body py-4">
+                    <h2 class="card-title text-xl text-indigo-700 mb-3 justify-center">浊音片假名</h2>
+                    <div id="katakanaDakuon" class="flex flex-col items-center gap-1"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 半浊音 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+            <!-- 平假名半浊音 -->
+            <div class="card bg-orange-50 shadow-lg border border-orange-100">
+                <div class="card-body py-4">
+                    <h2 class="card-title text-xl text-orange-700 mb-3 justify-center">半浊音（はんだくおん）</h2>
+                    <div id="hiraganaHandakuon" class="flex flex-col items-center gap-1"></div>
+                </div>
+            </div>
+
+            <!-- 片假名半浊音 -->
+            <div class="card bg-teal-50 shadow-lg border border-teal-100">
+                <div class="card-body py-4">
+                    <h2 class="card-title text-xl text-teal-700 mb-3 justify-center">半浊音片假名</h2>
+                    <div id="katakanaHandakuon" class="flex flex-col items-center gap-1"></div>
                 </div>
             </div>
         </div>
@@ -65,16 +134,14 @@
                     检索结果 
                     <span class="text-sm font-normal text-gray-500" id="searchPhonetic"></span>
                 </h3>
-                <div id="resultsList" class="space-y-3">
-                    <!-- 动态生成 -->
-                </div>
+                <div id="resultsList" class="space-y-3"></div>
             </div>
         </div>
     </main>
 
     <script>
         let currentPhonetics = {};
-        let currentMode = 'hiragana';
+        let selectedPhonetic = null;
 
         // 页面加载时获取50音数据
         document.addEventListener('DOMContentLoaded', async function() {
@@ -84,11 +151,10 @@
                 
                 if (data.success) {
                     currentPhonetics = data.data;
-                    renderChart();
+                    renderCharts();
                 }
             } catch (error) {
                 console.error('加载50音失败:', error);
-                // 使用默认数据
                 loadDefaultPhonetics();
             }
         });
@@ -110,74 +176,161 @@
                         {hiragana: 'く', katakana: 'ク', romaji: 'ku'},
                         {hiragana: 'け', katakana: 'ケ', romaji: 'ke'},
                         {hiragana: 'こ', katakana: 'コ', romaji: 'ko'}
-                    ],
-                    // ... 其他行
+                    ]
+                },
+                dakuon: {
+                    2: [
+                        {hiragana: 'が', katakana: 'ガ', romaji: 'ga'},
+                        {hiragana: 'ぎ', katakana: 'ギ', romaji: 'gi'},
+                        {hiragana: 'ぐ', katakana: 'グ', romaji: 'gu'},
+                        {hiragana: 'げ', katakana: 'ゲ', romaji: 'ge'},
+                        {hiragana: 'ご', katakana: 'ゴ', romaji: 'go'}
+                    ]
+                },
+                handakuon: {
+                    6: [
+                        {hiragana: 'ぱ', katakana: 'パ', romaji: 'pa'},
+                        {hiragana: 'ぴ', katakana: 'ピ', romaji: 'pi'},
+                        {hiragana: 'ぷ', katakana: 'プ', romaji: 'pu'},
+                        {hiragana: 'ぺ', katakana: 'ペ', romaji: 'pe'},
+                        {hiragana: 'ぽ', katakana: 'ポ', romaji: 'po'}
+                    ]
                 }
             };
-            renderChart();
+            renderCharts();
         }
 
         // 渲染图表
-        function renderChart() {
-            const container = document.getElementById('gojyuonChart');
-            container.innerHTML = '';
-
+        function renderCharts() {
             const rows = ['あ行', 'か行', 'さ行', 'た行', 'な行', 'は行', 'ま行', 'や行', 'ら行', 'わ行'];
             const rowNums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+            
+            // 清音
+            renderType(rowNums, rows, currentPhonetics.gojyuon, 'hiraganaChart', 'katakanaChart');
+            // 浊音
+            renderType(rowNums, rows, currentPhonetics.dakuon, 'hiraganaDakuon', 'katakanaDakuon');
+            // 半浊音
+            renderType(rowNums, rows, currentPhonetics.handakuon, 'hiraganaHandakuon', 'katakanaHandakuon');
+        }
+
+        // 渲染类型
+        function renderType(rowNums, rows, data, hiraganaId, katakanaId) {
+            const hiraganaContainer = document.getElementById(hiraganaId);
+            const katakanaContainer = document.getElementById(katakanaId);
+            
+            if (!hiraganaContainer || !katakanaContainer) return;
+            
+            hiraganaContainer.innerHTML = '';
+            katakanaContainer.innerHTML = '';
 
             rowNums.forEach((rowNum, index) => {
-                const rowData = currentPhonetics.gojyuon?.[rowNum] || [];
+                const rowData = data?.[rowNum] || [];
                 if (rowData.length === 0) return;
 
-                const rowDiv = document.createElement('div');
-                rowDiv.className = 'flex items-center gap-4';
+                // 渲染平假名行
+                const hiraganaRow = createRow(rows[index], rowData, 'hiragana');
+                hiraganaContainer.appendChild(hiraganaRow);
 
-                // 行标签
-                const label = document.createElement('span');
-                label.className = 'w-16 font-bold text-gray-600';
-                label.textContent = rows[index];
-                rowDiv.appendChild(label);
-
-                // 假名按钮
-                const buttonsDiv = document.createElement('div');
-                buttonsDiv.className = 'flex gap-2 flex-wrap';
-
-                rowData.forEach(char => {
-                    const btn = document.createElement('button');
-                    btn.className = 'phonetic-btn btn btn-outline btn-lg w-16 h-16 text-2xl';
-                    btn.textContent = currentMode === 'hiragana' ? char.hiragana : char.katakana;
-                    btn.onclick = () => searchByPhonetic(char.hiragana);
-                    buttonsDiv.appendChild(btn);
-                });
-
-                rowDiv.appendChild(buttonsDiv);
-                container.appendChild(rowDiv);
+                // 渲染片假名行
+                const katakanaRow = createRow(rows[index], rowData, 'katakana');
+                katakanaContainer.appendChild(katakanaRow);
             });
         }
 
-        // 显示平假名
-        function showHiragana() {
-            currentMode = 'hiragana';
-            document.getElementById('btnHiragana').classList.add('btn-active');
-            document.getElementById('btnKatakana').classList.remove('btn-active');
-            renderChart();
+        // 韵母列索引 (a=0, i=1, u=2, e=3, o=4)
+        const VOWEL_INDEX = { 'a': 0, 'i': 1, 'u': 2, 'e': 3, 'o': 4 };
+
+        // 创建行 - 确保5列对齐
+        function createRow(rowName, rowData, type) {
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'flex items-center gap-2 w-full max-w-md';
+
+            // 行标签
+            const label = document.createElement('span');
+            label.className = 'w-10 font-bold text-gray-500 text-xs shrink-0 text-right';
+            label.textContent = rowName;
+            rowDiv.appendChild(label);
+
+            // 按钮容器 - 5列固定宽度
+            const buttonsDiv = document.createElement('div');
+            buttonsDiv.className = 'flex gap-2 flex-1 justify-center';
+
+            // 创建5个位置（对应 a, i, u, e, o）
+            const positions = [null, null, null, null, null]; // 5个位置
+            
+            // 将音放入对应位置
+            rowData.forEach(char => {
+                const vowel = char.romaji.slice(-1); // 获取最后一个字母（韵母）
+                const index = VOWEL_INDEX[vowel];
+                if (index !== undefined) {
+                    positions[index] = char;
+                }
+            });
+
+            // 渲染5个位置
+            positions.forEach((char, index) => {
+                if (char) {
+                    // 有音，创建按钮
+                    const btn = document.createElement('button');
+                    btn.className = 'phonetic-btn btn btn-outline btn-xs w-12 h-11 flex flex-col items-center justify-center leading-none';
+                    const charDisplay = type === 'hiragana' ? char.hiragana : char.katakana;
+                    btn.innerHTML = `
+                        <span class="text-base">${charDisplay}</span>
+                        <span class="romaji-text text-[10px] text-gray-400 mt-0.5">${char.romaji}</span>
+                    `;
+                    btn.dataset.hiragana = char.hiragana;
+                    btn.dataset.katakana = char.katakana;
+                    btn.dataset.romaji = char.romaji;
+                    btn.onclick = () => {
+                        speakJapanese(char.hiragana);
+                        searchByPhonetic(char.hiragana, char.katakana);
+                    };
+                    buttonsDiv.appendChild(btn);
+                } else {
+                    // 无音，创建空白占位
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'w-12 h-11'; // 与按钮相同尺寸
+                    buttonsDiv.appendChild(placeholder);
+                }
+            });
+
+            rowDiv.appendChild(buttonsDiv);
+            return rowDiv;
         }
 
-        // 显示片假名
-        function showKatakana() {
-            currentMode = 'katakana';
-            document.getElementById('btnKatakana').classList.add('btn-active');
-            document.getElementById('btnHiragana').classList.remove('btn-active');
-            renderChart();
-        }
+        // 平假名和片假名的映射
+        const HIRAGANA_TO_KATAKANA = {
+            'あ': 'ア', 'い': 'イ', 'う': 'ウ', 'え': 'エ', 'お': 'オ',
+            'か': 'カ', 'き': 'キ', 'く': 'ク', 'け': 'ケ', 'こ': 'コ',
+            'さ': 'サ', 'し': 'シ', 'す': 'ス', 'せ': 'セ', 'そ': 'ソ',
+            'た': 'タ', 'ち': 'チ', 'つ': 'ツ', 'て': 'テ', 'と': 'ト',
+            'な': 'ナ', 'に': 'ニ', 'ぬ': 'ヌ', 'ね': 'ネ', 'の': 'ノ',
+            'は': 'ハ', 'ひ': 'ヒ', 'ふ': 'フ', 'へ': 'ヘ', 'ほ': 'ホ',
+            'ま': 'マ', 'み': 'ミ', 'む': 'ム', 'め': 'メ', 'も': 'モ',
+            'や': 'ヤ', 'ゆ': 'ユ', 'よ': 'ヨ',
+            'ら': 'ラ', 'り': 'リ', 'る': 'ル', 'れ': 'レ', 'ろ': 'ロ',
+            'わ': 'ワ', 'を': 'ヲ', 'ん': 'ン',
+            'が': 'ガ', 'ぎ': 'ギ', 'ぐ': 'グ', 'げ': 'ゲ', 'ご': 'ゴ',
+            'ざ': 'ザ', 'じ': 'ジ', 'ず': 'ズ', 'ぜ': 'ゼ', 'ぞ': 'ゾ',
+            'だ': 'ダ', 'ぢ': 'ヂ', 'づ': 'ヅ', 'で': 'デ', 'ど': 'ド',
+            'ば': 'バ', 'び': 'ビ', 'ぶ': 'ブ', 'べ': 'ベ', 'ぼ': 'ボ',
+            'ぱ': 'パ', 'ぴ': 'ピ', 'ぷ': 'プ', 'ぺ': 'ペ', 'ぽ': 'ポ',
+            'ゃ': 'ャ', 'ゅ': 'ュ', 'ょ': 'ョ', 'っ': 'ッ'
+        };
 
         // 按50音检索
-        async function searchByPhonetic(phonetic) {
-            // 高亮选中的按钮
+        async function searchByPhonetic(phonetic, clickedKatakana = null) {
+            selectedPhonetic = phonetic;
+            
+            // 获取对应的平假名和片假名
+            const hiragana = phonetic;
+            const katakana = HIRAGANA_TO_KATAKANA[phonetic] || clickedKatakana;
+            
+            // 高亮选中的按钮（平假名和对应的片假名）
             document.querySelectorAll('.phonetic-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.textContent === phonetic) {
-                    btn.classList.add('active');
+                btn.classList.remove('selected');
+                if (btn.dataset.hiragana === hiragana) {
+                    btn.classList.add('selected');
                 }
             });
 
@@ -199,12 +352,26 @@
                 }
 
                 data.data.raw_entries.forEach(entry => {
+                    // 高亮匹配的音节（同时高亮平假名和片假名）
+                    const highlightedOriginal = highlightPhonetic(entry.original_jp, hiragana, katakana);
+                    const highlightedHiragana = highlightPhonetic(entry.hiragana || '', hiragana, katakana);
+                    const romajiDisplay = entry.romaji ? `<p class="text-gray-500 text-sm">${entry.romaji}</p>` : '';
+                    
                     const item = document.createElement('div');
                     item.className = 'bg-gray-50 p-4 rounded-lg';
                     item.innerHTML = `
-                        <p class="text-lg font-bold">${entry.original_jp}</p>
-                        <p class="text-gray-600">${entry.chinese_meaning}</p>
-                        <p class="text-sm text-gray-400 mt-1">录入时间: ${new Date(entry.created_at).toLocaleDateString()}</p>
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <p class="text-lg font-bold">${highlightedOriginal}</p>
+                                <p class="text-gray-600">${highlightedHiragana}</p>
+                                ${romajiDisplay}
+                                <p class="text-gray-700 mt-1">${entry.chinese_meaning}</p>
+                                <p class="text-sm text-gray-400 mt-1">录入时间: ${new Date(entry.created_at).toLocaleDateString()}</p>
+                            </div>
+                            <button class="btn btn-circle btn-sm btn-outline ml-2" onclick="speakJapanese('${entry.original_jp.replace(/'/g, "\\'")}')" title="朗读">
+                                🔊
+                            </button>
+                        </div>
                     `;
                     resultsList.appendChild(item);
                 });
@@ -215,6 +382,98 @@
             } catch (error) {
                 console.error('检索失败:', error);
             }
+        }
+
+        // 高亮匹配的音节（同时高亮平假名和对应的片假名）
+        function highlightPhonetic(text, hiragana, katakana) {
+            if (!text) return text;
+            
+            let result = text;
+            
+            // 高亮平假名
+            if (hiragana) {
+                const hiraRegex = new RegExp(`(${hiragana})`, 'g');
+                result = result.replace(hiraRegex, '<span class="highlight-match">$1</span>');
+            }
+            
+            // 高亮片假名
+            if (katakana) {
+                const kataRegex = new RegExp(`(${katakana})`, 'g');
+                result = result.replace(kataRegex, '<span class="highlight-match">$1</span>');
+            }
+            
+            return result;
+        }
+
+        // 发音设置
+        let speechEnabled = true;
+        let speechRate = 0.8;
+
+        // Web Speech API 日语发音函数
+        function speakJapanese(text) {
+            if (!text || !speechEnabled) return;
+            
+            // 检查浏览器是否支持语音合成
+            if (!window.speechSynthesis) {
+                console.warn('浏览器不支持语音合成');
+                return;
+            }
+            
+            // 停止当前正在播放的语音
+            window.speechSynthesis.cancel();
+            
+            // 创建语音实例
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ja-JP'; // 设置日语
+            utterance.rate = speechRate; // 语速
+            utterance.pitch = 1.0; // 正常音调
+            utterance.volume = 1.0; // 最大音量
+            
+            // 尝试获取日语语音
+            const voices = window.speechSynthesis.getVoices();
+            const japaneseVoice = voices.find(voice => voice.lang.startsWith('ja'));
+            if (japaneseVoice) {
+                utterance.voice = japaneseVoice;
+            }
+            
+            // 播放语音
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // 切换发音开关
+        function toggleSpeech() {
+            speechEnabled = !speechEnabled;
+            const btn = document.getElementById('speechToggle');
+            if (speechEnabled) {
+                btn.innerHTML = '🔊 发音开启';
+                btn.classList.remove('btn-error');
+                btn.classList.add('btn-primary');
+            } else {
+                btn.innerHTML = '🔇 发音关闭';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-error');
+            }
+        }
+
+        // 测试发音
+        function testSpeech() {
+            speakJapanese('あいうえお');
+        }
+
+        // 改变语速
+        function changeSpeechRate(rate) {
+            speechRate = parseFloat(rate);
+            // 播放示例让用户感受新语速
+            setTimeout(() => speakJapanese('か'), 100);
+        }
+
+        // 预加载语音列表（某些浏览器需要）
+        if (window.speechSynthesis) {
+            window.speechSynthesis.getVoices();
+            // 语音列表加载可能需要时间，监听变化
+            window.speechSynthesis.onvoiceschanged = () => {
+                window.speechSynthesis.getVoices();
+            };
         }
     </script>
 </body>

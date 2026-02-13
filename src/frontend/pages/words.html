@@ -31,7 +31,7 @@
         <!-- 搜索框 -->
         <div class="flex justify-center mb-8">
             <div class="join w-full max-w-lg">
-                <input type="text" placeholder="搜索单词或句子..." class="input input-bordered join-item w-full" id="searchInput" />
+                <input type="text" placeholder="搜索单词或句子..." class="input input-bordered join-item w-full" id="searchInput" onkeypress="handleKeyPress(event)" />
                 <button class="btn join-item" onclick="search()">🔍 搜索</button>
             </div>
         </div>
@@ -61,13 +61,21 @@
     <script>
         let currentPage = 1;
         let totalPages = 1;
+        let currentSearchKeyword = '';
 
         document.addEventListener('DOMContentLoaded', function() {
             loadEntries();
         });
 
-        async function loadEntries(page = 1) {
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                search();
+            }
+        }
+
+        async function loadEntries(page = 1, searchKeyword = '') {
             currentPage = page;
+            currentSearchKeyword = searchKeyword;
             const contentArea = document.getElementById('contentArea');
             
             contentArea.innerHTML = `
@@ -78,7 +86,12 @@
             `;
 
             try {
-                const response = await fetch(`/api/entries?page=${page}&limit=20`);
+                let url = `/api/entries?page=${page}&limit=20`;
+                if (searchKeyword) {
+                    url += `&search=${encodeURIComponent(searchKeyword)}`;
+                }
+                
+                const response = await fetch(url);
                 const result = await response.json();
 
                 if (!result.success) {
@@ -93,8 +106,8 @@
                     contentArea.innerHTML = `
                         <div class="text-center py-12">
                             <div class="text-6xl mb-4">📭</div>
-                            <p class="text-gray-500">暂无数据</p>
-                            <a href="input.html" class="btn btn-primary mt-4">去录入</a>
+                            <p class="text-gray-500">${searchKeyword ? '未找到匹配的内容' : '暂无数据'}</p>
+                            ${!searchKeyword ? '<a href="input.html" class="btn btn-primary mt-4">去录入</a>' : ''}
                         </div>
                     `;
                     document.getElementById('pagination').style.display = 'none';
@@ -105,12 +118,14 @@
                 let html = '<div class="space-y-4">';
                 
                 entries.forEach(entry => {
+                    const romajiDisplay = entry.romaji ? `<p class="text-gray-500 text-sm mb-1">${entry.romaji}</p>` : '';
                     html += `
-                        <div class="bg-gray-50 p-4 rounded-lg hover:shadow-md transition-shadow cursor-pointer" onclick="showDetail(${entry.id})">
+                        <div class="bg-gray-50 p-4 rounded-lg">
                             <div class="flex justify-between items-start">
                                 <div class="flex-1">
                                     <p class="text-xl font-bold mb-1">${entry.original_jp}</p>
                                     <p class="text-gray-600 text-sm mb-1">${entry.hiragana}</p>
+                                    ${romajiDisplay}
                                     <p class="text-gray-700">${entry.chinese_meaning}</p>
                                 </div>
                                 <span class="badge badge-outline">${entry.content_type === 'sentence' ? '句子' : '单词'}</span>
@@ -129,6 +144,8 @@
                 if (totalPages > 1) {
                     document.getElementById('pagination').style.display = 'flex';
                     document.getElementById('pageInfo').textContent = `第 ${currentPage} / ${totalPages} 页`;
+                } else {
+                    document.getElementById('pagination').style.display = 'none';
                 }
 
             } catch (error) {
@@ -140,23 +157,13 @@
         function changePage(delta) {
             const newPage = currentPage + delta;
             if (newPage >= 1 && newPage <= totalPages) {
-                loadEntries(newPage);
+                loadEntries(newPage, currentSearchKeyword);
             }
         }
 
         function search() {
-            const keyword = document.getElementById('searchInput').value;
-            if (!keyword) {
-                loadEntries(1);
-                return;
-            }
-            
-            // 简单的客户端搜索
-            alert('搜索功能: ' + keyword);
-        }
-
-        function showDetail(id) {
-            alert('查看详情功能，ID: ' + id);
+            const keyword = document.getElementById('searchInput').value.trim();
+            loadEntries(1, keyword);
         }
     </script>
 </body>

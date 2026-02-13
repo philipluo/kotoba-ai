@@ -85,7 +85,9 @@ def search_by_phonetic(character):
             # 查询原始数据
             if entry_type in ['all', 'raw']:
                 cursor.execute('''
-                    SELECT e.* FROM raw_entries e
+                    SELECT e.id, e.content_type, e.original_jp, e.hiragana, e.romaji, 
+                           e.chinese_meaning, e.source, e.tags, e.created_at
+                    FROM raw_entries e
                     JOIN phonetic_index p ON e.id = p.entry_id
                     WHERE p.phonetic = ? AND p.entry_table = 'raw_entries'
                     ORDER BY e.created_at DESC

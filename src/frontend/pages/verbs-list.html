@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动词列表 - 言葉AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #fdf2f8 0%, #e0f2fe 100%);
+        }
+        .verb-cell {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        .kanji-part {
+            color: #666;
+        }
+        .reading-part {
+            color: #333;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen">
+    <!-- 导航栏 -->
+    <nav class="navbar bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex-1">
+                <a href="../index.html" class="btn btn-ghost text-xl">
+                    <span class="text-2xl">🌸</span>
+                    <span class="font-bold">言葉AI</span>
+                </a>
+            </div>
+            <div class="flex-none">
+                <a href="../index.html" class="btn btn-ghost btn-sm">← 返回首页</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-2">🔤 动词列表</h1>
+        <p class="text-gray-600 text-center mb-8">已掌握 <span id="verbCount" class="font-bold text-primary">0</span> 个动词</p>
+
+        <!-- 加载状态 -->
+        <div id="loadingState" class="flex justify-center items-center py-20">
+            <span class="loading loading-spinner loading-lg text-primary"></span>
+            <span class="ml-4 text-gray-500">加载中...</span>
+        </div>
+
+        <!-- 动词表格 -->
+        <div id="verbTable" class="card bg-white shadow-xl" style="display: none;">
+            <div class="card-body p-0">
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra w-full">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="text-left py-4 px-6">动词原型</th>
+                                <th class="text-left py-4 px-6">中文</th>
+                                <th class="text-left py-4 px-6">平假名读音</th>
+                                <th class="text-left py-4 px-6">罗马音</th>
+                                <th class="text-left py-4 px-6">礼貌体</th>
+                                <th class="text-left py-4 px-6">礼貌体罗马音</th>
+                                <th class="text-left py-4 px-6">名词体</th>
+                                <th class="text-left py-4 px-6">名词体罗马音</th>
+                            </tr>
+                        </thead>
+                        <tbody id="verbTableBody">
+                            <!-- 动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 空状态 -->
+        <div id="emptyState" class="text-center py-20" style="display: none;">
+            <div class="text-6xl mb-4">📭</div>
+            <p class="text-gray-500 mb-4">暂无动词数据</p>
+            <a href="input.html" class="btn btn-primary">去录入</a>
+        </div>
+    </main>
+
+    <script>
+        // 提取汉字（如果有的话）
+        function extractKanji(prototype) {
+            // 简单的提取：如果有括号，提取括号内的内容
+            const match = prototype.match(/([^(]+)(?:\(([^)]+)\))?/);
+            if (match) {
+                const hiragana = match[1].trim();
+                const kanji = match[2] ? match[2].trim() : '';
+                return { hiragana, kanji };
+            }
+            return { hiragana: prototype, kanji: '' };
+        }
+
+        // 格式化动词显示（平假名 + 汉字）
+        function formatVerb(prototype) {
+            const { hiragana, kanji } = extractKanji(prototype);
+            if (kanji) {
+                return `<span class="reading-part">${hiragana}</span> <span class="kanji-part">（${kanji}）</span>`;
+            }
+            return `<span class="reading-part">${hiragana}</span>`;
+        }
+
+        // 简单的平假名转罗马音函数
+        function hiraganaToRomaji(hiragana) {
+            const map = {
+                'あ': 'a', 'い': 'i', 'う': 'u', 'え': 'e', 'お': 'o',
+                'か': 'ka', 'き': 'ki', 'く': 'ku', 'け': 'ke', 'こ': 'ko',
+                'が': 'ga', 'ぎ': 'gi', 'ぐ': 'gu', 'げ': 'ge', 'ご': 'go',
+                'さ': 'sa', 'し': 'shi', 'す': 'su', 'せ': 'se', 'そ': 'so',
+                'ざ': 'za', 'じ': 'ji', 'ず': 'zu', 'ぜ': 'ze', 'ぞ': 'zo',
+                'た': 'ta', 'ち': 'chi', 'つ': 'tsu', 'て': 'te', 'と': 'to',
+                'だ': 'da', 'ぢ': 'ji', 'づ': 'zu', 'で': 'de', 'ど': 'do',
+                'な': 'na', 'に': 'ni', 'ぬ': 'nu', 'ね': 'ne', 'の': 'no',
+                'は': 'ha', 'ひ': 'hi', 'ふ': 'fu', 'へ': 'he', 'ほ': 'ho',
+                'ば': 'ba', 'び': 'bi', 'ぶ': 'bu', 'べ': 'be', 'ぼ': 'bo',
+                'ぱ': 'pa', 'ぴ': 'pi', 'ぷ': 'pu', 'ぺ': 'pe', 'ぽ': 'po',
+                'ま': 'ma', 'み': 'mi', 'む': 'mu', 'め': 'me', 'も': 'mo',
+                'や': 'ya', 'ゆ': 'yu', 'よ': 'yo',
+                'ら': 'ra', 'り': 'ri', 'る': 'ru', 'れ': 're', 'ろ': 'ro',
+                'わ': 'wa', 'を': 'wo', 'ん': 'n',
+                'きゃ': 'kya', 'きゅ': 'kyu', 'きょ': 'kyo',
+                'ぎゃ': 'gya', 'ぎゅ': 'gyu', 'ぎょ': 'gyo',
+                'しゃ': 'sha', 'しゅ': 'shu', 'しょ': 'sho',
+                'じゃ': 'ja', 'じゅ': 'ju', 'じょ': 'jo',
+                'ちゃ': 'cha', 'ちゅ': 'chu', 'ちょ': 'cho',
+                'にゃ': 'nya', 'にゅ': 'nyu', 'にょ': 'nyo',
+                'ひゃ': 'hya', 'ひゅ': 'hyu', 'ひょ': 'hyo',
+                'びゃ': 'bya', 'びゅ': 'byu', 'びょ': 'byo',
+                'ぴゃ': 'pya', 'ぴゅ': 'pyu', 'ぴょ': 'pyo',
+                'みゃ': 'mya', 'みゅ': 'myu', 'みょ': 'myo',
+                'りゃ': 'rya', 'りゅ': 'ryu', 'りょ': 'ryo',
+                'っ': '', 'ゃ': 'ya', 'ゅ': 'yu', 'ょ': 'yo'
+            };
+            
+            let romaji = '';
+            let i = 0;
+            while (i < hiragana.length) {
+                // 尝试匹配2个字符（拗音）
+                if (i + 1 < hiragana.length) {
+                    const twoChars = hiragana.substring(i, i + 2);
+                    if (map[twoChars]) {
+                        romaji += map[twoChars];
+                        i += 2;
+                        continue;
+                    }
+                }
+                // 匹配单个字符
+                const char = hiragana[i];
+                romaji += map[char] || char;
+                i++;
+            }
+            return romaji;
+        }
+
+        // 获取礼貌体（ます形）- 返回对象包含显示文本和平假名
+        function getPoliteForm(conjugations) {
+            const masu = conjugations['masu'];
+            if (masu) {
+                // 显示用 form_value（可能含汉字），罗马音用 reading（纯平假名）
+                const displayText = `<span class="reading-part">${masu.form_value}</span>`;
+                const hiragana = masu.reading || ''; // 使用纯平假名
+                return { displayText, hiragana };
+            }
+            return { displayText: '-', hiragana: '' };
+        }
+
+        // 获取名词体（原型+こと）- 返回对象包含显示文本和平假名
+        function getNounForm(prototype, reading) {
+            // 显示用：原型+こと（可能含汉字）
+            const { hiragana: protoHira, kanji } = extractKanji(prototype);
+            let displayText;
+            if (kanji) {
+                displayText = `<span class="reading-part">${protoHira}こと</span> <span class="kanji-part">（${kanji}こと）</span>`;
+            } else {
+                displayText = `<span class="reading-part">${protoHira}こと</span>`;
+            }
+            // 罗马音用：reading + こと（纯平假名）
+            const nounHiragana = (reading || protoHira) + 'こと';
+            return { displayText, hiragana: nounHiragana };
+        }
+
+        // 页面加载时获取数据
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch('/api/verbs');
+                const result = await response.json();
+
+                if (!result.success) {
+                    showError('加载失败');
+                    return;
+                }
+
+                const verbs = result.data.verbs;
+                document.getElementById('verbCount').textContent = verbs.length;
+
+                if (verbs.length === 0) {
+                    showEmpty();
+                    return;
+                }
+
+                renderTable(verbs);
+
+            } catch (error) {
+                console.error('加载失败:', error);
+                showError('加载失败，请检查网络');
+            }
+        });
+
+        function renderTable(verbs) {
+            const tbody = document.getElementById('verbTableBody');
+            tbody.innerHTML = '';
+
+            verbs.forEach(verb => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                
+                const prototype = formatVerb(verb.prototype);
+                const meaning = verb.meaning || '-';
+                const hiraganaReading = verb.reading || '-';
+                const romaji = hiraganaToRomaji(hiraganaReading);
+                
+                const politeFormData = getPoliteForm(verb.conjugations);
+                const politeForm = politeFormData.displayText;
+                const politeRomaji = hiraganaToRomaji(politeFormData.hiragana);
+                
+                const nounFormData = getNounForm(verb.prototype, verb.reading);
+                const nounForm = nounFormData.displayText;
+                const nounRomaji = hiraganaToRomaji(nounFormData.hiragana);
+                
+                row.innerHTML = `
+                    <td class="verb-cell py-4 px-6">${prototype}</td>
+                    <td class="verb-cell py-4 px-6">${meaning}</td>
+                    <td class="verb-cell py-4 px-6">${hiraganaReading}</td>
+                    <td class="verb-cell py-4 px-6 text-gray-600">${romaji}</td>
+                    <td class="verb-cell py-4 px-6">${politeForm}</td>
+                    <td class="verb-cell py-4 px-6 text-gray-600">${politeRomaji}</td>
+                    <td class="verb-cell py-4 px-6">${nounForm}</td>
+                    <td class="verb-cell py-4 px-6 text-gray-600">${nounRomaji}</td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('verbTable').style.display = 'block';
+        }
+
+        function showEmpty() {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'block';
+        }
+
+        function showError(message) {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'block';
+            document.getElementById('emptyState').innerHTML = `
+                <div class="text-6xl mb-4">❌</div>
+                <p class="text-gray-500 mb-4">${message}</p>
+            `;
+        }
+    </script>
+</body>
+</html>

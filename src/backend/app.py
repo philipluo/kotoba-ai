@@ -8,6 +8,7 @@ from .routes.entries import entries_bp
 from .routes.phonetics import phonetics_bp
 from .routes.practice import practice_bp
 from .routes.stats import stats_bp
+from .routes.verbs import verbs_bp
 
 def create_app(config_name='default'):
     """应用工厂函数"""
@@ -39,6 +40,7 @@ def create_app(config_name='default'):
     app.register_blueprint(phonetics_bp)
     app.register_blueprint(practice_bp)
     app.register_blueprint(stats_bp)
+    app.register_blueprint(verbs_bp)
     
     # 根路由 - 返回首页
     @app.route('/')

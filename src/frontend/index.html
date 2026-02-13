@@ -17,6 +17,15 @@
             transform: translateY(-4px);
             box-shadow: 0 12px 24px rgba(0,0,0,0.15);
         }
+        a.stats {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        a.stats:hover {
+            text-decoration: none;
+            color: inherit;
+        }
     </style>
 </head>
 <body class="gradient-bg min-h-screen">
@@ -64,13 +73,13 @@
                     <div class="stat-desc">已学习内容</div>
                 </div>
             </div>
-            <div class="stats shadow bg-white card-hover">
+            <a href="pages/verbs-list.html" class="stats shadow bg-white card-hover cursor-pointer no-underline">
                 <div class="stat">
                     <div class="stat-title">动词</div>
                     <div class="stat-value text-secondary" id="verbCount">0</div>
                     <div class="stat-desc">掌握动词</div>
                 </div>
-            </div>
+            </a>
             <div class="stats shadow bg-white card-hover">
                 <div class="stat">
                     <div class="stat-title">今日新学</div>

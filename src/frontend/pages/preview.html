@@ -151,7 +151,12 @@
                         <h3 class="card-title text-lg">
                             📄 第${index}条 / 共${total}条
                         </h3>
-                        <span class="badge badge-outline">${words.length}个词语</span>
+                        <div class="flex gap-2">
+                            ${entry.segmentation_source === 'ai' 
+                                ? '<span class="badge badge-success">🤖 AI预分词</span>' 
+                                : '<span class="badge badge-warning">⚠️ 自动分词（可能不准确）</span>'}
+                            <span class="badge badge-outline">${words.length}个词语</span>
+                        </div>
                     </div>
                     
                     <!-- 原文展示 -->
@@ -228,7 +233,17 @@
 
         // 确认入库
         async function confirmEntry() {
-            if (!confirm(`确认要将这${previewData.total_count}条数据全部入库吗？`)) {
+            // 检查是否有使用自动分词的数据
+            const autoSegmentedCount = previewData.entries.filter(e => e.segmentation_source === 'auto').length;
+            let confirmMsg = `确认要将这${previewData.total_count}条数据全部入库吗？`;
+            
+            if (autoSegmentedCount > 0) {
+                confirmMsg = `⚠️ 警告：其中有 ${autoSegmentedCount} 条数据使用了自动分词（可能不准确）。\n\n` +
+                           `建议先返回修改，使用AI预分词以获得更准确的结果。\n\n` +
+                           `确认仍要继续入库吗？`;
+            }
+            
+            if (!confirm(confirmMsg)) {
                 return;
             }
 

@@ -101,20 +101,32 @@ def validate_entry(data, index=None):
 
 def process_single_entry(data):
     """处理单条数据，返回预览结果"""
-    segmenter = JapaneseSegmenter()
-    segmented_words = segmenter.segment(
-        data['original_jp'],
-        data['hiragana']
-    )
+    # 优先使用AI预分词的数据
+    pre_segmented = data.get('segmented_words')
+    
+    if pre_segmented and len(pre_segmented) > 0:
+        # 使用AI预分词结果
+        segmented_words_data = pre_segmented
+        print(f"✅ 使用AI预分词结果: {len(pre_segmented)} 个单词")
+    else:
+        # 降级使用自动分词（不推荐）
+        segmenter = JapaneseSegmenter()
+        segmented_words = segmenter.segment(
+            data['original_jp'],
+            data['hiragana']
+        )
+        segmented_words_data = [word.to_dict() for word in segmented_words]
+        print(f"⚠️  使用自动分词结果（可能不准确）: {len(segmented_words_data)} 个单词")
     
     phonetics = extract_phonetics(data['hiragana'])
     
     return {
         'original_data': data,
-        'segmented_words': [word.to_dict() for word in segmented_words],
-        'verbs_detected': extract_verbs(segmented_words),
+        'segmented_words': segmented_words_data,
+        'verbs_detected': [w for w in segmented_words_data if w.get('word_type') == 'verb'],
         'phonetic_index': phonetics,
-        'total_words': len(segmented_words)
+        'total_words': len(segmented_words_data),
+        'segmentation_source': 'ai' if pre_segmented else 'auto'
     }
 
 @entries_bp.route('/preview', methods=['POST'])
@@ -247,7 +259,8 @@ def confirm_entry(preview_id):
                 ''', (json.dumps(word_indices), entry_id))
                 
                 # 4. 生成50音索引
-                create_phonetic_index(cursor, entry_id, original_data['hiragana'], word_indices)
+                if entry_id:
+                    create_phonetic_index(cursor, entry_id, original_data['hiragana'], word_indices)
                 
                 results.append({
                     'entry_id': entry_id,
@@ -284,6 +297,7 @@ def get_entries():
         page = request.args.get('page', 1, type=int)
         limit = request.args.get('limit', 20, type=int)
         content_type = request.args.get('content_type')
+        search = request.args.get('search', '')
         order_by = request.args.get('order_by', 'created_at')
         order = request.args.get('order', 'desc')
         
@@ -303,6 +317,13 @@ def get_entries():
                 query += ' AND content_type = ?'
                 count_query += ' AND content_type = ?'
                 params.append(content_type)
+            
+            # 添加搜索功能
+            if search:
+                search_pattern = f'%{search}%'
+                query += ' AND (original_jp LIKE ? OR hiragana LIKE ? OR chinese_meaning LIKE ? OR romaji LIKE ?)'
+                count_query += ' AND (original_jp LIKE ? OR hiragana LIKE ? OR chinese_meaning LIKE ? OR romaji LIKE ?)'
+                params.extend([search_pattern, search_pattern, search_pattern, search_pattern])
             
             # 获取总数
             cursor.execute(count_query, params)
@@ -451,7 +472,7 @@ def get_categories(word_type):
             # 查询所有分词及其对应的原始句子
             placeholders = ','.join(['?' for _ in target_types])
             cursor.execute(f'''
-                SELECT s.*, r.original_jp as from_sentence, r.created_at
+                SELECT s.*, r.original_jp as from_sentence, r.romaji, r.created_at
                 FROM segmented_words s
                 JOIN raw_entries r ON s.raw_entry_id = r.id
                 WHERE s.word_type IN ({placeholders})

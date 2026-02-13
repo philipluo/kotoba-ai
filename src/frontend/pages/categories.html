@@ -35,6 +35,7 @@
                 <button class="tab" onclick="switchTab('verbs')" id="tab-verbs">动词</button>
                 <button class="tab" onclick="switchTab('adjectives')" id="tab-adjectives">形容词</button>
                 <button class="tab" onclick="switchTab('particles')" id="tab-particles">助词</button>
+                <button class="tab" onclick="switchTab('phrases')" id="tab-phrases">短语</button>
             </div>
         </div>
 
@@ -58,7 +59,8 @@
             'nouns': '名词',
             'verbs': '动词',
             'adjectives': '形容词',
-            'particles': '助词'
+            'particles': '助词',
+            'phrases': '短语'
         };
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -85,18 +87,39 @@
             `;
 
             try {
-                // 使用新的分类API
-                const response = await fetch(`/api/entries/categories/${tab}`);
-                const result = await response.json();
+                let items = [];
+                let success = false;
+                
+                // 短语分类特殊处理
+                if (tab === 'phrases') {
+                    const response = await fetch('/api/entries?content_type=phrase&limit=100');
+                    const result = await response.json();
+                    success = result.success;
+                    if (result.success) {
+                        items = result.data.items.map(entry => ({
+                            word_jp: entry.original_jp,
+                            hiragana: entry.hiragana,
+                            romaji: entry.romaji || '-',
+                            meaning: entry.chinese_meaning,
+                            created_at: entry.created_at
+                        }));
+                    }
+                } else {
+                    // 使用分类API获取分词数据
+                    const response = await fetch(`/api/entries/categories/${tab}`);
+                    const result = await response.json();
+                    success = result.success;
+                    if (result.success) {
+                        items = result.data.words || [];
+                    }
+                }
 
-                if (!result.success) {
+                if (!success) {
                     contentArea.innerHTML = '<p class="text-center text-gray-500">加载失败</p>';
                     return;
                 }
 
-                const words = result.data.words || [];
-
-                if (words.length === 0) {
+                if (items.length === 0) {
                     contentArea.innerHTML = `
                         <div class="text-center py-12">
                             <div class="text-6xl mb-4">📭</div>
@@ -109,31 +132,35 @@
 
                 // 渲染表格
                 let html = `
-                    <p class="text-gray-500 mb-4">共 ${words.length} 个${typeNames[tab]}</p>
+                    <p class="text-gray-500 mb-4">共 ${items.length} 个${typeNames[tab]}</p>
                     <div class="overflow-x-auto">
                         <table class="table table-zebra">
                             <thead>
                                 <tr>
-                                    <th>词语</th>
+                                    <th>${tab === 'phrases' ? '短语' : '词语'}</th>
                                     <th>读音</th>
+                                    <th>罗马音</th>
                                     <th>意思</th>
-                                    <th>出处</th>
+                                    ${tab !== 'phrases' ? '<th>出处</th>' : ''}
                                     <th>录入时间</th>
                                 </tr>
                             </thead>
                             <tbody>
                 `;
 
-                words.forEach(word => {
-                    const meaning = word.grammar_info && word.grammar_info.meaning ? word.grammar_info.meaning : '-';
-                    const createdDate = word.created_at ? new Date(word.created_at).toLocaleDateString() : '-';
+                items.forEach(item => {
+                    const meaning = item.meaning || (item.grammar_info && item.grammar_info.meaning ? item.grammar_info.meaning : '-');
+                    const createdDate = item.created_at ? new Date(item.created_at).toLocaleDateString() : '-';
+                    const romaji = item.romaji || '-';
+                    const fromSentence = tab !== 'phrases' ? `<td class="text-sm text-gray-600 max-w-xs truncate" title="${item.from_sentence || ''}">${item.from_sentence || '-'}</td>` : '';
                     
                     html += `
                         <tr>
-                            <td class="font-bold text-lg">${word.word_jp}</td>
-                            <td>${word.hiragana}</td>
+                            <td class="font-bold text-lg">${item.word_jp}</td>
+                            <td>${item.hiragana}</td>
+                            <td class="text-sm text-gray-500">${romaji}</td>
                             <td>${meaning}</td>
-                            <td class="text-sm text-gray-600 max-w-xs truncate" title="${word.from_sentence || ''}">${word.from_sentence || '-'}</td>
+                            ${fromSentence}
                             <td class="text-sm text-gray-400">${createdDate}</td>
                         </tr>
                     `;

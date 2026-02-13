@@ -63,32 +63,24 @@
                         <textarea 
                             id="jsonInput" 
                             class="textarea textarea-bordered h-80 font-mono text-sm"
-                            placeholder='在此粘贴JSON数据，支持单条或数组格式：
+                            placeholder='在此粘贴JSON数据，【重要】必须包含AI预分词：
 
-单条示例：
+单条示例（含分词）：
 {
   "content_type": "sentence",
   "original_jp": "私は学生です",
   "hiragana": "わたしはがくせいです",
-  "romaji": "watashi wa gakusei desu",
-  "chinese_meaning": "我是学生"
+  "chinese_meaning": "我是学生",
+  "segmented_words": [
+    {"word_jp": "私", "hiragana": "わたし", "word_type": "pronoun", "position": 0},
+    {"word_jp": "は", "hiragana": "は", "word_type": "particle", "position": 1},
+    {"word_jp": "学生", "hiragana": "がくせい", "word_type": "noun", "position": 2},
+    {"word_jp": "です", "hiragana": "です", "word_type": "aux_verb", "position": 3}
+  ]
 }
 
-批量示例（JSON数组）：
-[
-  {
-    "content_type": "sentence",
-    "original_jp": "でんしゃはもうすぐ来ますか",
-    "hiragana": "でんしゃはもうすぐきますか",
-    "chinese_meaning": "火车很快就会来吗？"
-  },
-  {
-    "content_type": "sentence",
-    "original_jp": "東京駅は終点ですか。",
-    "hiragana": "とうきょうえきはしゅうてんですか。",
-    "chinese_meaning": "东京站是终点站吗？"
-  }
-]'
+⚠️ 提示：复制"提示语模板"让AI帮你生成带分词的JSON！
+文档：docs/08-JSON录入模板.md'
                         ></textarea>
                     </div>
 
@@ -109,15 +101,29 @@
                     </div>
 
                     <!-- 提示信息 -->
-                    <div class="alert alert-info mt-6">
+                    <div class="alert alert-warning mt-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        <div>
+                            <h3 class="font-bold">⚠️ 重要提示：必须使用AI预分词</h3>
+                            <div class="text-sm">
+                                1. 程序自动分词<strong>不准确</strong>，请务必使用AI预分词<br>
+                                2. JSON中必须包含 <code>segmented_words</code> 数组<br>
+                                3. 参考文档：docs/08-JSON录入模板.md 获取提示语模板<br>
+                                4. 没有分词的数据将使用不准确的自动分词（不推荐）
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 提示信息 -->
+                    <div class="alert alert-info mt-4">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         <div>
-                            <h3 class="font-bold">使用说明</h3>
+                            <h3 class="font-bold">使用流程</h3>
                             <div class="text-sm">
-                                1. 支持单条JSON或JSON数组格式<br>
-                                2. 批量录入时请使用JSON数组格式（方括号包裹）<br>
-                                3. 点击"开始分拣"后会显示所有数据的预览<br>
-                                4. 确认无误后点击"确认入库"即可批量保存
+                                1. 发送截图给AI + 提示语模板<br>
+                                2. AI返回带分词的JSON（含 segmented_words）<br>
+                                3. 复制JSON粘贴到这里<br>
+                                4. 点击"开始分拣"预览 → 确认入库
                             </div>
                         </div>
                     </div>
@@ -154,10 +160,52 @@
                     "tags": {
                         "grammar_points": ["は主题助词", "です礼貌体"],
                         "difficulty": 1
-                    }
+                    },
+                    "segmented_words": [
+                        {
+                            "word_jp": "私",
+                            "hiragana": "わたし",
+                            "word_type": "pronoun",
+                            "position": 0,
+                            "grammar_info": {
+                                "meaning": "我",
+                                "category": "人称代词"
+                            }
+                        },
+                        {
+                            "word_jp": "は",
+                            "hiragana": "は",
+                            "word_type": "particle",
+                            "position": 1,
+                            "grammar_info": {
+                                "meaning": "主题助词",
+                                "function": "标记句子主题"
+                            }
+                        },
+                        {
+                            "word_jp": "学生",
+                            "hiragana": "がくせい",
+                            "word_type": "noun",
+                            "position": 2,
+                            "grammar_info": {
+                                "meaning": "学生",
+                                "category": "职业/身份"
+                            }
+                        },
+                        {
+                            "word_jp": "です",
+                            "hiragana": "です",
+                            "word_type": "aux_verb",
+                            "position": 3,
+                            "grammar_info": {
+                                "meaning": "是（礼貌体）",
+                                "function": "判断助动词"
+                            }
+                        }
+                    ]
                 };
             } else {
-                // 批量示例
+                // 批量示例（含AI预分词）
                 example = [
                     {
                         "content_type": "sentence",
@@ -169,7 +217,14 @@
                             "grammar_points": ["は（主题标记）", "もうすぐ（时间副词）", "ます（敬体）", "か（疑问助词）"],
                             "scene": "交通/询问",
                             "difficulty": 1
-                        }
+                        },
+                        "segmented_words": [
+                            {"word_jp": "でんしゃ", "hiragana": "でんしゃ", "word_type": "noun", "position": 0, "grammar_info": {"meaning": "火车"}},
+                            {"word_jp": "は", "hiragana": "は", "word_type": "particle", "position": 1, "grammar_info": {"meaning": "主题助词"}},
+                            {"word_jp": "もうすぐ", "hiragana": "もうすぐ", "word_type": "adverb", "position": 2, "grammar_info": {"meaning": "很快"}},
+                            {"word_jp": "来ます", "hiragana": "きます", "word_type": "verb", "position": 3, "grammar_info": {"meaning": "来", "prototype": "来る", "form": "masu"}},
+                            {"word_jp": "か", "hiragana": "か", "word_type": "particle", "position": 4, "grammar_info": {"meaning": "疑问助词"}}
+                        ]
                     },
                     {
                         "content_type": "sentence",
@@ -181,19 +236,15 @@
                             "grammar_points": ["は（主题标记）", "です（判断助动词）", "か（疑问助词）"],
                             "scene": "交通/车站",
                             "difficulty": 1
-                        }
-                    },
-                    {
-                        "content_type": "sentence",
-                        "original_jp": "二十分ぐらいかかります。",
-                        "hiragana": "にじゅっぷんぐらいかかります。",
-                        "romaji": "nijuppun gurai kakarimasu",
-                        "chinese_meaning": "大概要花二十分钟。",
-                        "tags": {
-                            "grammar_points": ["ぐらい（大致数量）", "かかります（花费时间）", "ます（敬体）"],
-                            "scene": "时间/数量",
-                            "difficulty": 1
-                        }
+                        },
+                        "segmented_words": [
+                            {"word_jp": "東京", "hiragana": "とうきょう", "word_type": "noun", "position": 0, "grammar_info": {"meaning": "东京"}},
+                            {"word_jp": "駅", "hiragana": "えき", "word_type": "noun", "position": 1, "grammar_info": {"meaning": "车站"}},
+                            {"word_jp": "は", "hiragana": "は", "word_type": "particle", "position": 2, "grammar_info": {"meaning": "主题助词"}},
+                            {"word_jp": "終点", "hiragana": "しゅうてん", "word_type": "noun", "position": 3, "grammar_info": {"meaning": "终点站"}},
+                            {"word_jp": "です", "hiragana": "です", "word_type": "aux_verb", "position": 4, "grammar_info": {"meaning": "是（礼貌体）"}},
+                            {"word_jp": "か", "hiragana": "か", "word_type": "particle", "position": 5, "grammar_info": {"meaning": "疑问助词"}}
+                        ]
                     }
                 ];
             }
@@ -238,6 +289,8 @@
 
             // 验证必填字段
             const required = ['original_jp', 'hiragana', 'chinese_meaning'];
+            let missingSegmentation = [];
+            
             for (let i = 0; i < entries.length; i++) {
                 const entry = entries[i];
                 for (const field of required) {
@@ -245,6 +298,22 @@
                         alert(`第${i + 1}条数据缺少必填字段: ${field}`);
                         return;
                     }
+                }
+                
+                // 检查是否有分词数据
+                if (!entry.segmented_words || entry.segmented_words.length === 0) {
+                    missingSegmentation.push(i + 1);
+                }
+            }
+            
+            // 警告缺少分词的数据
+            if (missingSegmentation.length > 0) {
+                const msg = `⚠️ 警告：第 ${missingSegmentation.join(', ')} 条数据缺少 segmented_words 分词数据。\n\n` +
+                           `程序将使用不准确的自动分词。\n\n` +
+                           `建议：使用 docs/08-JSON录入模板.md 中的提示语让AI预分词。\n\n` +
+                           `是否继续？`;
+                if (!confirm(msg)) {
+                    return;
                 }
             }
 

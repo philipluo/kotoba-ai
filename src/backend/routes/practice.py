@@ -19,28 +19,31 @@ def generate_daily_practice():
             now = datetime.now()
             questions = []
             
-            # 1. 获取最近7天的内容（新知识，40%）
+            # 1. 获取最近7天的句子（新知识，40%）
             cursor.execute('''
                 SELECT * FROM raw_entries
                 WHERE created_at >= datetime('now', '-7 days')
+                AND content_type = 'sentence'
                 AND processed = 1
                 ORDER BY created_at DESC
             ''')
             recent_entries = [dict(row) for row in cursor.fetchall()]
             
-            # 2. 获取7-30天的内容（30%）
+            # 2. 获取7-30天的句子（30%）
             cursor.execute('''
                 SELECT * FROM raw_entries
                 WHERE created_at BETWEEN datetime('now', '-30 days') AND datetime('now', '-7 days')
+                AND content_type = 'sentence'
                 AND processed = 1
                 ORDER BY created_at DESC
             ''')
             medium_entries = [dict(row) for row in cursor.fetchall()]
             
-            # 3. 获取30天以上的内容（20%）
+            # 3. 获取30天以上的句子（20%）
             cursor.execute('''
                 SELECT * FROM raw_entries
                 WHERE created_at < datetime('now', '-30 days')
+                AND content_type = 'sentence'
                 AND processed = 1
                 ORDER BY RANDOM()
             ''')
@@ -140,6 +143,7 @@ def generate_prompt():
 3. {style_instructions.get(style, style_instructions['gentle'])}
 4. 给出正确答案
 5. 简单讲解相关语法点
+6. 不要念出提示中的日语发音（平假名/片假名），只念题目本身
 
 题目列表：
 
@@ -250,18 +254,15 @@ def submit_practice():
         }), 500
 
 def _create_question(entry: dict, question_id: int, now: datetime) -> dict:
-    """根据学习内容创建题目"""
+    """根据句子内容创建题目（只处理句子类型）"""
     # 计算已创建天数
     created_at = datetime.fromisoformat(entry['created_at'].replace('Z', '+00:00'))
     days_ago = (now - created_at).days
     is_new = days_ago <= 7
     
-    # 随机选择题型
+    # 随机选择题型（句子类型专用）
     question_types = ['translation_jp_to_cn', 'translation_cn_to_jp']
-    if entry.get('content_type') == 'sentence':
-        q_type = random.choice(question_types)
-    else:
-        q_type = 'word_recognition'
+    q_type = random.choice(question_types)
     
     if q_type == 'translation_jp_to_cn':
         return {
@@ -274,24 +275,13 @@ def _create_question(entry: dict, question_id: int, now: datetime) -> dict:
             'is_new': is_new,
             'days_since_created': days_ago
         }
-    elif q_type == 'translation_cn_to_jp':
+    else:
         return {
             'id': question_id,
             'type': 'translation_cn_to_jp',
             'question': entry['chinese_meaning'],
             'correct_answer': entry['original_jp'],
             'hint': f"读音: {entry.get('romaji', entry['hiragana'])}",
-            'source_entry_id': entry['id'],
-            'is_new': is_new,
-            'days_since_created': days_ago
-        }
-    else:
-        return {
-            'id': question_id,
-            'type': 'word_recognition',
-            'question': entry['original_jp'],
-            'correct_answer': entry['chinese_meaning'],
-            'hint': f"读音: {entry['hiragana']}",
             'source_entry_id': entry['id'],
             'is_new': is_new,
             'days_since_created': days_ago
